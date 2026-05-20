@@ -27,7 +27,8 @@ fun NavGraph(navController: NavHostController) {
         composable(Screen.Journal.route) {
             JournalScreen(
                 onAddTrade = { navController.navigate(Screen.AddTrade.route) },
-                onTradeClick = { tradeId -> navController.navigate(Screen.TradeDetail.createRoute(tradeId)) }
+                onTradeClick = { tradeId -> navController.navigate(Screen.TradeDetail.createRoute(tradeId)) },
+                onEditTrade = { tradeId -> navController.navigate(Screen.EditTrade.createRoute(tradeId)) }
             )
         }
         composable(Screen.Analytics.route) {
