@@ -1,10 +1,12 @@
 package com.example.compoundingjournal.presentation.journal
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
@@ -36,6 +38,7 @@ fun TradeDetailScreen(
     
     var trade by remember { mutableStateOf<TradeEntity?>(null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var fullScreenImageUrl by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(tradeId) {
         trade = repository.getTradeById(tradeId)
@@ -118,12 +121,19 @@ fun TradeDetailScreen(
 
                 DetailSection("Screenshots") {
                     Text("Before Entry:", style = MaterialTheme.typography.labelMedium)
-                    ScreenshotPreview(t.beforeScreenshotPath)
+                    ScreenshotPreview(t.beforeScreenshotPath, onClick = { fullScreenImageUrl = t.beforeScreenshotPath })
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("After Entry:", style = MaterialTheme.typography.labelMedium)
-                    ScreenshotPreview(t.afterScreenshotPath)
+                    ScreenshotPreview(t.afterScreenshotPath, onClick = { fullScreenImageUrl = t.afterScreenshotPath })
                 }
             }
+        }
+
+        if (fullScreenImageUrl != null) {
+            FullScreenImageDialog(
+                imageUrl = fullScreenImageUrl!!,
+                onDismiss = { fullScreenImageUrl = null }
+            )
         }
 
         if (showDeleteDialog) {
@@ -171,7 +181,7 @@ fun DetailRow(label: String, value: String, color: Color = MaterialTheme.colorSc
 }
 
 @Composable
-fun ScreenshotPreview(path: String?) {
+fun ScreenshotPreview(path: String?, onClick: () -> Unit = {}) {
     if (path != null) {
         AsyncImage(
             model = path,
@@ -179,7 +189,8 @@ fun ScreenshotPreview(path: String?) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(200.dp)
-                .padding(top = 4.dp),
+                .padding(top = 4.dp)
+                .clickable { onClick() },
             contentScale = ContentScale.Crop
         )
     } else {
@@ -191,6 +202,34 @@ fun ScreenshotPreview(path: String?) {
             contentAlignment = Alignment.Center
         ) {
             Text("No screenshot", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+        }
+    }
+}
+
+@Composable
+fun FullScreenImageDialog(imageUrl: String, onDismiss: () -> Unit) {
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = Color.Black
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)
+                ) {
+                    Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                }
+            }
         }
     }
 }

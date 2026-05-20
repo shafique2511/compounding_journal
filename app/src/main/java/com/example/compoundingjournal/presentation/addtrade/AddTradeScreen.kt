@@ -7,18 +7,22 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.compoundingjournal.data.local.AppDatabase
 import com.example.compoundingjournal.data.repository.SettingsRepositoryImpl
 import com.example.compoundingjournal.data.repository.TradeRepositoryImpl
+import com.example.compoundingjournal.presentation.journal.ScreenshotPreview
+import com.example.compoundingjournal.utils.ImageUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -253,28 +257,61 @@ fun AddTradeScreen(
             // Section 5: Screenshots
             Divider()
             Text("Section 5: Screenshots", style = MaterialTheme.typography.titleMedium)
-            val beforePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-                viewModel.onEvent(TradeFormEvent.BeforeScreenshotPicked(uri?.toString()))
-            }
-            val afterPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-                viewModel.onEvent(TradeFormEvent.AfterScreenshotPicked(uri?.toString()))
-            }
+            
+            var tempUri by remember { mutableStateOf<android.net.Uri?>(null) }
+            var pickingForBefore by remember { mutableStateOf(true) }
 
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { beforePicker.launch("image/*") }, modifier = Modifier.weight(1f)) {
-                    Icon(Icons.Default.Image, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Before Entry")
-                }
-                Button(onClick = { afterPicker.launch("image/*") }, modifier = Modifier.weight(1f)) {
-                    Icon(Icons.Default.Image, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("After Entry")
+            val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+                uri?.let {
+                    if (pickingForBefore) viewModel.onEvent(TradeFormEvent.BeforeScreenshotPicked(it.toString()))
+                    else viewModel.onEvent(TradeFormEvent.AfterScreenshotPicked(it.toString()))
                 }
             }
 
-            if (uiState.beforeScreenshotPath != null) Text("Before picked", style = MaterialTheme.typography.bodySmall)
-            if (uiState.afterScreenshotPath != null) Text("After picked", style = MaterialTheme.typography.bodySmall)
+            val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+                if (success) {
+                    tempUri?.let {
+                        if (pickingForBefore) viewModel.onEvent(TradeFormEvent.BeforeScreenshotPicked(it.toString()))
+                        else viewModel.onEvent(TradeFormEvent.AfterScreenshotPicked(it.toString()))
+                    }
+                }
+            }
+
+            val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+                if (isGranted) {
+                    val uri = ImageUtils.createImageUri(context)
+                    tempUri = uri
+                    uri?.let { cameraLauncher.launch(it) }
+                }
+            }
+
+            ScreenshotSection(
+                label = "Before Entry",
+                path = uiState.beforeScreenshotPath,
+                onPickGallery = {
+                    pickingForBefore = true
+                    galleryLauncher.launch("image/*")
+                },
+                onPickCamera = {
+                    pickingForBefore = true
+                    permissionLauncher.launch(android.Manifest.permission.CAMERA)
+                },
+                onRemove = { viewModel.onEvent(TradeFormEvent.BeforeScreenshotPicked(null)) }
+            )
+
+            ScreenshotSection(
+                label = "After Entry",
+                path = uiState.afterScreenshotPath,
+                onPickGallery = {
+                    pickingForBefore = false
+                    galleryLauncher.launch("image/*")
+                },
+                onPickCamera = {
+                    pickingForBefore = false
+                    permissionLauncher.launch(android.Manifest.permission.CAMERA)
+                },
+                onRemove = { viewModel.onEvent(TradeFormEvent.AfterScreenshotPicked(null)) }
+            )
 
             Spacer(Modifier.height(16.dp))
 
@@ -306,10 +343,46 @@ fun AddTradeScreen(
             }
 
             uiState.errorMessage?.let { msg ->
-                LaunchedEffect(msg) {
-                    // In a real app we'd use SnackbarHostState, but for brevity:
-                }
                 Text(msg, color = MaterialTheme.colorScheme.error)
+            }
+        }
+    }
+}
+
+@Composable
+fun ScreenshotSection(
+    label: String,
+    path: String?,
+    onPickGallery: () -> Unit,
+    onPickCamera: () -> Unit,
+    onRemove: () -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(label, style = MaterialTheme.typography.labelMedium)
+        Spacer(modifier = Modifier.height(8.dp))
+        if (path != null) {
+            Box(modifier = Modifier.fillMaxWidth().height(150.dp)) {
+                ScreenshotPreview(path)
+                IconButton(
+                    onClick = onRemove,
+                    modifier = Modifier.align(Alignment.TopEnd),
+                    colors = IconButtonDefaults.iconButtonColors(containerColor = Color.Black.copy(alpha = 0.5f))
+                ) {
+                    Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color.White)
+                }
+            }
+        } else {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = onPickGallery, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Default.Image, contentDescription = null)
+                    Spacer(Modifier.width(4.dp))
+                    Text("Gallery", fontSize = 12.sp)
+                }
+                OutlinedButton(onClick = onPickCamera, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Default.PhotoCamera, contentDescription = null)
+                    Spacer(Modifier.width(4.dp))
+                    Text("Camera", fontSize = 12.sp)
+                }
             }
         }
     }
