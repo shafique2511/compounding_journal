@@ -1,15 +1,15 @@
 package com.example.compoundingjournal.presentation.addtrade
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 
 @Composable
-fun EditTradeScreen(tradeId: Long, onNavigateBack: () -> Unit) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(text = "Edit Trade Screen for ID: $tradeId")
-    }
+fun EditTradeScreen(
+    tradeId: Long,
+    onNavigateBack: () -> Unit
+) {
+    // Reuse AddTradeScreen for editing by passing the tradeId
+    AddTradeScreen(
+        onNavigateBack = onNavigateBack,
+        tradeId = tradeId
+    )
 }
