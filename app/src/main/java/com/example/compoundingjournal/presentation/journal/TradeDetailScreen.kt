@@ -22,6 +22,9 @@ import coil.compose.AsyncImage
 import com.example.compoundingjournal.data.entity.TradeEntity
 import com.example.compoundingjournal.data.local.AppDatabase
 import com.example.compoundingjournal.data.repository.TradeRepositoryImpl
+import com.example.compoundingjournal.presentation.components.AppTopBar
+import com.example.compoundingjournal.presentation.components.ConfirmationDialog
+import com.example.compoundingjournal.presentation.components.SectionCard
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,8 +49,8 @@ fun TradeDetailScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(if (trade != null) "Trade #${trade?.tradeNumber}" else "Loading...") },
+            AppTopBar(
+                title = if (trade != null) "Trade Detail #${trade?.tradeNumber}" else "Loading...",
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -58,7 +61,7 @@ fun TradeDetailScreen(
                         Icon(Icons.Default.Edit, contentDescription = "Edit")
                     }
                     IconButton(onClick = { showDeleteDialog = true }) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete")
+                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
                     }
                 }
             )
@@ -73,59 +76,74 @@ fun TradeDetailScreen(
             Column(
                 modifier = Modifier
                     .padding(padding)
-                    .padding(16.dp)
+                    .padding(horizontal = 16.dp)
                     .verticalScroll(rememberScrollState())
                     .fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                DetailSection("Trade Info") {
-                    DetailRow("Symbol", t.symbol)
-                    DetailRow("Direction", t.direction)
-                    DetailRow("Timeframe", t.timeframe)
-                    DetailRow("Status", t.status)
-                    DetailRow("Date", t.date)
-                    DetailRow("Time", t.time)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                SectionCard("Trade Overview") {
+                    DetailItem("Symbol", t.symbol, isBold = true)
+                    DetailItem("Direction", t.direction)
+                    DetailItem("Timeframe", t.timeframe)
+                    DetailItem("Status", t.status, valueColor = getStatusColor(t.status))
+                    DetailItem("Date", t.date)
+                    DetailItem("Time", t.time)
                 }
 
-                DetailSection("Price Info") {
-                    DetailRow("Entry Price", String.format("%.5f", t.entryPrice))
-                    DetailRow("Stop Loss", String.format("%.5f", t.stopLoss))
-                    DetailRow("Take Profit", String.format("%.5f", t.takeProfit))
-                    DetailRow("Lot Size", t.lotSize.toString())
+                SectionCard("Execution Details") {
+                    DetailItem("Entry Price", String.format("%.5f", t.entryPrice))
+                    DetailItem("Stop Loss", String.format("%.5f", t.stopLoss))
+                    DetailItem("Take Profit", String.format("%.5f", t.takeProfit))
+                    DetailItem("Lot Size", t.lotSize.toString())
                 }
 
-                DetailSection("Money Info") {
-                    DetailRow("Starting Balance", String.format("%.2f", t.startingBalance))
-                    DetailRow("Gross P/L", String.format("%.2f", t.grossProfitLoss))
-                    DetailRow("Commission", String.format("%.2f", t.commission))
-                    DetailRow("Swap", String.format("%.2f", t.swap))
-                    DetailRow("Net P/L", String.format("%.2f", t.netProfitLoss), color = if (t.netProfitLoss >= 0) Color(0xFF4CAF50) else Color(0xFFF44336))
-                    DetailRow("Withdrawal", String.format("%.2f", t.withdrawalAmount))
-                    DetailRow("Ending Balance", String.format("%.2f", t.endingBalance))
-                    DetailRow("Growth %", "${String.format("%.2f", t.growthPercent)}%")
-                    DetailRow("R/R Ratio", String.format("%.2f", t.riskRewardRatio))
-                    DetailRow("R Multiple", String.format("%.2f", t.rMultiple))
+                SectionCard("Profit & Loss") {
+                    DetailItem("Starting Balance", String.format("%.2f", t.startingBalance))
+                    DetailItem("Gross P/L", String.format("%.2f", t.grossProfitLoss))
+                    DetailItem("Commission", String.format("%.2f", t.commission))
+                    DetailItem("Swap", String.format("%.2f", t.swap))
+                    DetailItem(
+                        label = "Net P/L", 
+                        value = String.format("%.2f", t.netProfitLoss), 
+                        valueColor = if (t.netProfitLoss >= 0) Color(0xFF4CAF50) else Color(0xFFF44336),
+                        isBold = true
+                    )
+                    DetailItem("Withdrawal", String.format("%.2f", t.withdrawalAmount))
+                    DetailItem("Ending Balance", String.format("%.2f", t.endingBalance), isBold = true)
+                    DetailItem("Growth", "${String.format("%.2f", t.growthPercent)}%")
+                    DetailItem("R/R Ratio", String.format("%.2f", t.riskRewardRatio))
+                    DetailItem("R Multiple", String.format("%.2f", t.rMultiple))
                 }
 
-                DetailSection("Psychology & Notes") {
-                    DetailRow("Strategy", t.strategyName)
-                    DetailRow("Setup", t.setupType)
-                    DetailRow("Emotion Before", t.emotionBefore)
-                    DetailRow("Emotion After", t.emotionAfter)
-                    DetailRow("Mistakes", t.mistakeMade)
-                    DetailRow("Lessons", t.lessonLearned)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("Notes:", style = MaterialTheme.typography.labelMedium)
-                    Text(t.notes, style = MaterialTheme.typography.bodyMedium)
+                SectionCard("Psychology & Performance") {
+                    DetailItem("Strategy", t.strategyName.ifBlank { "Not specified" })
+                    DetailItem("Setup", t.setupType.ifBlank { "Not specified" })
+                    DetailItem("Emotion Before", t.emotionBefore.ifBlank { "N/A" })
+                    DetailItem("Emotion After", t.emotionAfter.ifBlank { "N/A" })
+                    DetailItem("Mistakes", t.mistakeMade.ifBlank { "None" })
+                    DetailItem("Lessons", t.lessonLearned.ifBlank { "N/A" })
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text("Journal Notes:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
+                    Text(
+                        text = t.notes.ifBlank { "No notes provided." }, 
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
                 }
 
-                DetailSection("Screenshots") {
-                    Text("Before Entry:", style = MaterialTheme.typography.labelMedium)
+                SectionCard("Screenshots") {
+                    Text("Before Entry", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
                     ScreenshotPreview(t.beforeScreenshotPath, onClick = { fullScreenImageUrl = t.beforeScreenshotPath })
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("After Entry:", style = MaterialTheme.typography.labelMedium)
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text("After Exit", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
                     ScreenshotPreview(t.afterScreenshotPath, onClick = { fullScreenImageUrl = t.afterScreenshotPath })
                 }
+                
+                Spacer(modifier = Modifier.height(32.dp))
             }
         }
 
@@ -137,71 +155,76 @@ fun TradeDetailScreen(
         }
 
         if (showDeleteDialog) {
-            AlertDialog(
-                onDismissRequest = { showDeleteDialog = false },
-                title = { Text("Delete Trade") },
-                text = { Text("Are you sure you want to delete this trade? Subsequent balances will be recalculated.") },
-                confirmButton = {
-                    TextButton(onClick = {
-                        scope.launch {
-                            trade?.let { repository.deleteTrade(it) }
-                            onNavigateBack()
-                        }
-                    }) {
-                        Text("Delete", color = MaterialTheme.colorScheme.error)
+            ConfirmationDialog(
+                title = "Delete Trade Record",
+                text = "Are you sure you want to permanently delete this trade record? This action will trigger a recalculation of all subsequent trades.",
+                onConfirm = {
+                    scope.launch {
+                        trade?.let { repository.deleteTrade(it) }
+                        onNavigateBack()
                     }
                 },
-                dismissButton = {
-                    TextButton(onClick = { showDeleteDialog = false }) {
-                        Text("Cancel")
-                    }
-                }
+                onDismiss = { showDeleteDialog = false }
             )
         }
     }
 }
 
 @Composable
-fun DetailSection(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
-            content()
-        }
+fun DetailItem(label: String, value: String, valueColor: Color = MaterialTheme.colorScheme.onSurface, isBold: Boolean = false) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), 
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.outline)
+        Text(
+            text = value, 
+            style = MaterialTheme.typography.bodyMedium, 
+            color = valueColor, 
+            fontWeight = if (isBold) FontWeight.Bold else FontWeight.Medium
+        )
     }
 }
 
-@Composable
-fun DetailRow(label: String, value: String, color: Color = MaterialTheme.colorScheme.onSurface) {
-    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, style = MaterialTheme.typography.bodyMedium, color = color, fontWeight = FontWeight.Medium)
+fun getStatusColor(status: String): Color {
+    return when (status.uppercase()) {
+        "WIN" -> Color(0xFF4CAF50)
+        "LOSS" -> Color(0xFFF44336)
+        "BREAKEVEN" -> Color.Gray
+        "RUNNING" -> Color(0xFF2196F3)
+        "CANCELLED" -> Color.LightGray
+        else -> Color.Black
     }
 }
 
 @Composable
 fun ScreenshotPreview(path: String?, onClick: () -> Unit = {}) {
     if (path != null) {
-        AsyncImage(
-            model = path,
-            contentDescription = null,
+        Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(200.dp)
-                .padding(top = 4.dp)
+                .padding(top = 8.dp)
                 .clickable { onClick() },
-            contentScale = ContentScale.Crop
-        )
+            shape = MaterialTheme.shapes.medium
+        ) {
+            AsyncImage(
+                model = path,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        }
     } else {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(100.dp)
-                .padding(top = 4.dp),
+                .padding(top = 8.dp),
             contentAlignment = Alignment.Center
         ) {
-            Text("No screenshot", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+            Text("No image uploaded", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
         }
     }
 }

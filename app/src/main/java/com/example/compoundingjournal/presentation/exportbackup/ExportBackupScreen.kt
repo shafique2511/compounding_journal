@@ -5,14 +5,20 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.compoundingjournal.data.local.AppDatabase
 import com.example.compoundingjournal.data.repository.TradeRepositoryImpl
+import com.example.compoundingjournal.presentation.components.AppTopBar
+import com.example.compoundingjournal.presentation.components.ConfirmationDialog
+import com.example.compoundingjournal.presentation.components.SectionCard
 import com.example.compoundingjournal.utils.BackupUtils
 import com.example.compoundingjournal.utils.ExportUtils
 
@@ -36,14 +42,14 @@ fun ExportBackupScreen(onNavigateBack: () -> Unit) {
     val csvLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
         uri?.let {
             val success = ExportUtils.writeTextToUri(context, it, csvContent)
-            viewModel.showMessage(if (success) "Export successful" else "Export failed")
+            viewModel.showMessage(if (success) "Report exported successfully" else "Export failed")
         }
     }
 
     val backupLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
         uri?.let {
             val success = BackupUtils.backupDatabase(context, it)
-            viewModel.showMessage(if (success) "Backup successful" else "Backup failed")
+            viewModel.showMessage(if (success) "Database backup created" else "Backup failed")
         }
     }
 
@@ -63,8 +69,8 @@ fun ExportBackupScreen(onNavigateBack: () -> Unit) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Export & Backup") },
+            AppTopBar(
+                title = "Data Management",
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -77,91 +83,97 @@ fun ExportBackupScreen(onNavigateBack: () -> Unit) {
         Column(
             modifier = Modifier
                 .padding(padding)
-                .padding(16.dp)
+                .padding(horizontal = 16.dp)
                 .fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Export Data", style = MaterialTheme.typography.titleMedium)
-                    Text("Download your trade history in CSV format.", style = MaterialTheme.typography.bodySmall)
-                    Button(
-                        onClick = {
-                            viewModel.prepareAllTradesExport { content ->
-                                csvContent = content
-                                csvLauncher.launch("trades_export_${System.currentTimeMillis()}.csv")
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Export All Trades to CSV")
-                    }
-                    
-                    OutlinedButton(
-                        onClick = {
-                            viewModel.prepareSummaryExport { content ->
-                                csvContent = content
-                                csvLauncher.launch("summary_export_${System.currentTimeMillis()}.csv")
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Export Summary to CSV")
-                    }
+            Spacer(modifier = Modifier.height(8.dp))
+
+            SectionCard("Export History") {
+                Text(
+                    text = "Download your trading data to an external CSV file compatible with Excel or Google Sheets.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = {
+                        viewModel.prepareAllTradesExport { content ->
+                            csvContent = content
+                            csvLauncher.launch("trades_report_${System.currentTimeMillis()}.csv")
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Icon(Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Export All Trades (CSV)")
+                }
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                OutlinedButton(
+                    onClick = {
+                        viewModel.prepareSummaryExport { content ->
+                            csvContent = content
+                            csvLauncher.launch("performance_summary_${System.currentTimeMillis()}.csv")
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Text("Export Performance Summary")
                 }
             }
 
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Database Backup & Restore", style = MaterialTheme.typography.titleMedium)
-                    Text("Create a backup of your local database or restore from a file.", style = MaterialTheme.typography.bodySmall)
-                    
+            SectionCard("Cloud-less Backup") {
+                Text(
+                    text = "Secure your journal locally. We don't store your data on servers, so keep your backups safe.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Button(
-                        onClick = { backupLauncher.launch("compounding_journal_backup_${System.currentTimeMillis()}.db") },
-                        modifier = Modifier.fillMaxWidth()
+                        onClick = { backupLauncher.launch("journal_backup_${System.currentTimeMillis()}.db") },
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        shape = MaterialTheme.shapes.medium
                     ) {
-                        Text("Backup Database")
+                        Text("Create Backup")
                     }
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
                     
                     OutlinedButton(
                         onClick = { restoreLauncher.launch(arrayOf("*/*")) },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        shape = MaterialTheme.shapes.medium
                     ) {
-                        Text("Restore Database")
+                        Text("Restore Data")
                     }
                 }
             }
+            
+            Spacer(modifier = Modifier.height(32.dp))
         }
 
         if (showRestoreConfirm) {
-            AlertDialog(
-                onDismissRequest = { showRestoreConfirm = false },
-                title = { Text("Confirm Restore") },
-                text = { Text("Restoring will overwrite your current data. Are you sure you want to proceed?") },
-                confirmButton = {
-                    TextButton(onClick = {
-                        restoreUri?.let { uri ->
-                            // In a production app, we'd close the DB properly before this.
-                            // For this phase, we perform the file copy.
-                            val success = BackupUtils.restoreDatabase(context, uri)
-                            if (success) {
-                                viewModel.showMessage("Restore successful. Please restart the app.")
-                            } else {
-                                viewModel.showMessage("Restore failed")
-                            }
+            ConfirmationDialog(
+                title = "Overwrite Current Data",
+                text = "Restoring from a backup will replace your current trading journal completely. This cannot be undone.",
+                confirmText = "Confirm Restoration",
+                onConfirm = {
+                    restoreUri?.let { uri ->
+                        val success = BackupUtils.restoreDatabase(context, uri)
+                        if (success) {
+                            viewModel.showMessage("Journal restored successfully. Restarting app recommended.")
+                        } else {
+                            viewModel.showMessage("Database restoration failed")
                         }
-                        showRestoreConfirm = false
-                    }) {
-                        Text("Restore", color = MaterialTheme.colorScheme.error)
                     }
+                    showRestoreConfirm = false
                 },
-                dismissButton = {
-                    TextButton(onClick = { showRestoreConfirm = false }) {
-                        Text("Cancel")
-                    }
-                }
+                onDismiss = { showRestoreConfirm = false }
             )
         }
     }

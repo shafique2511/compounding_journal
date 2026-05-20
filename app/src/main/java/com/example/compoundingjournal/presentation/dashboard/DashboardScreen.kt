@@ -2,10 +2,10 @@ package com.example.compoundingjournal.presentation.dashboard
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
@@ -26,6 +26,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.compoundingjournal.data.local.AppDatabase
 import com.example.compoundingjournal.data.repository.SettingsRepositoryImpl
 import com.example.compoundingjournal.data.repository.TradeRepositoryImpl
+import com.example.compoundingjournal.presentation.components.AppTopBar
+import com.example.compoundingjournal.presentation.components.ChartCard
+import com.example.compoundingjournal.presentation.components.KpiCard
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
@@ -45,7 +48,7 @@ fun DashboardScreen() {
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Dashboard") })
+            AppTopBar(title = "Dashboard")
         }
     ) { padding ->
         Box(modifier = Modifier.padding(padding).pullRefresh(pullRefreshState)) {
@@ -54,7 +57,6 @@ fun DashboardScreen() {
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Filters
                 item {
                     DateRangeFilters(
                         selectedOption = uiState.filters.dateRange,
@@ -62,23 +64,27 @@ fun DashboardScreen() {
                     )
                 }
 
-                // KPI Grid
                 item {
                     KpiGrid(uiState.kpis)
                 }
 
                 item {
-                    Text("Performance Charts", style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        text = "Performance Analytics",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
                 }
 
                 item {
-                    ChartCard("Balance Growth") {
+                    ChartCard("Equity Curve") {
                         LineChart(data = uiState.chartData.balanceGrowth.map { it.second })
                     }
                 }
 
                 item {
-                    ChartCard("Profit/Loss History") {
+                    ChartCard("Profit & Loss Distribution") {
                         BarChart(data = uiState.chartData.profitLossHistory)
                     }
                 }
@@ -96,10 +102,12 @@ fun DashboardScreen() {
                 }
                 
                 item {
-                    ChartCard("Monthly Profit") {
+                    ChartCard("Monthly Revenue") {
                         HorizontalBarChart(data = uiState.chartData.monthlyProfit)
                     }
                 }
+
+                item { Spacer(modifier = Modifier.height(16.dp)) }
             }
 
             PullRefreshIndicator(uiState.isRefreshing, pullRefreshState, Modifier.align(Alignment.TopCenter))
@@ -122,7 +130,8 @@ fun DateRangeFilters(
             FilterChip(
                 selected = selectedOption == option,
                 onClick = { onOptionSelected(option) },
-                label = { Text(option.name.replace("_", " ").lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }) }
+                label = { Text(option.name.replace("_", " ").lowercase().replaceFirstChar { it.titlecase(Locale.getDefault()) }) },
+                shape = MaterialTheme.shapes.medium
             )
         }
     }
@@ -130,55 +139,43 @@ fun DateRangeFilters(
 
 @Composable
 fun KpiGrid(kpis: DashboardKpis) {
+    val profitColor = if (kpis.totalNetProfit >= 0) Color(0xFF4CAF50) else Color(0xFFF44336)
+    
     val items = listOf(
-        "Balance" to String.format("%.2f", kpis.currentBalance),
-        "Net Profit" to String.format("%.2f", kpis.totalNetProfit),
-        "Win Rate" to "${String.format("%.1f", kpis.winRate)}%",
-        "Trades" to kpis.totalTrades.toString(),
-        "Avg R" to String.format("%.2f", kpis.averageRMultiple),
-        "Profit Factor" to String.format("%.2f", kpis.profitFactor),
-        "Max DD" to String.format("%.2f", kpis.maxDrawdown),
-        "Streak" to kpis.currentStreak.toString()
+        KpiItem("Account Balance", String.format("%.2f", kpis.currentBalance)),
+        KpiItem("Net Profit", String.format("%.2f", kpis.totalNetProfit), profitColor),
+        KpiItem("Win Rate", "${String.format("%.1f", kpis.winRate)}%"),
+        KpiItem("Total Trades", kpis.totalTrades.toString()),
+        KpiItem("Average R", String.format("%.2f", kpis.averageRMultiple)),
+        KpiItem("Profit Factor", String.format("%.2f", kpis.profitFactor)),
+        KpiItem("Max Drawdown", String.format("%.2f", kpis.maxDrawdown), Color(0xFFFF9800)),
+        KpiItem("Current Streak", kpis.currentStreak.toString())
     )
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         items.chunked(2).forEach { rowItems ->
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                rowItems.forEach { (label, value) ->
-                    KpiCard(label, value, modifier = Modifier.weight(1f))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                rowItems.forEach { kpi ->
+                    KpiCard(
+                        label = kpi.label,
+                        value = kpi.value,
+                        modifier = Modifier.weight(1f),
+                        valueColor = kpi.color ?: MaterialTheme.colorScheme.onSurface
+                    )
                 }
             }
         }
     }
 }
 
-@Composable
-fun KpiCard(label: String, value: String, modifier: Modifier = Modifier) {
-    Card(modifier = modifier) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
-            Text(value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, maxLines = 1)
-        }
-    }
-}
-
-@Composable
-fun ChartCard(title: String, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    Card(modifier = modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(16.dp))
-            Box(modifier = Modifier.fillMaxWidth().height(200.dp)) {
-                content()
-            }
-        }
-    }
-}
+data class KpiItem(val label: String, val value: String, val color: Color? = null)
 
 @Composable
 fun LineChart(data: List<Double>, modifier: Modifier = Modifier) {
     if (data.size < 2) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Not enough data") }
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { 
+            Text("Not enough data to plot equity curve", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.outline) 
+        }
         return
     }
 
@@ -198,14 +195,16 @@ fun LineChart(data: List<Double>, modifier: Modifier = Modifier) {
             if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
         }
         
-        drawPath(path, color = Color(0xFF2196F3), style = Stroke(width = 4f))
+        drawPath(path, color = Color(0xFF6200EE), style = Stroke(width = 6f))
     }
 }
 
 @Composable
 fun BarChart(data: List<Double>, modifier: Modifier = Modifier) {
     if (data.isEmpty()) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("No data") }
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { 
+            Text("No trade history available", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.outline) 
+        }
         return
     }
 
@@ -223,39 +222,47 @@ fun BarChart(data: List<Double>, modifier: Modifier = Modifier) {
             
             drawRect(
                 color = if (value >= 0) Color(0xFF4CAF50) else Color(0xFFF44336),
-                topLeft = Offset(x + 2f, y.toFloat()),
-                size = androidx.compose.ui.geometry.Size(barWidth - 4f, barHeight.toFloat())
+                topLeft = Offset(x + 4f, y.toFloat()),
+                size = androidx.compose.ui.geometry.Size((barWidth - 8f).coerceAtLeast(1f), barHeight.toFloat())
             )
         }
-        drawLine(Color.Gray, Offset(0f, height / 2), Offset(width, height / 2))
+        drawLine(Color.Gray.copy(alpha = 0.5f), Offset(0f, height / 2), Offset(width, height / 2), strokeWidth = 2f)
     }
 }
 
 @Composable
 fun HorizontalBarChart(data: Map<String, Double>, modifier: Modifier = Modifier) {
     if (data.isEmpty()) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("No data") }
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { 
+            Text("No comparative data", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.outline) 
+        }
         return
     }
 
     val max = data.values.maxOf { Math.abs(it) }.coerceAtLeast(1.0)
     val entries = data.toList()
 
-    Column(modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         entries.forEach { (label, value) ->
             Column {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(label, fontSize = 10.sp)
-                    Text(String.format("%.2f", value), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Text(label, style = MaterialTheme.typography.labelMedium)
+                    Text(
+                        text = String.format("%.2f", value),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (value >= 0) Color(0xFF4CAF50) else Color(0xFFF44336)
+                    )
                 }
-                Spacer(Modifier.height(2.dp))
-                Box(modifier = Modifier.fillMaxWidth().height(12.dp)) {
+                Spacer(Modifier.height(4.dp))
+                Box(modifier = Modifier.fillMaxWidth().height(16.dp)) {
                     val progress = (Math.abs(value) / max).toFloat()
                     LinearProgressIndicator(
                         progress = progress,
                         modifier = Modifier.fillMaxSize(),
                         color = if (value >= 0) Color(0xFF4CAF50) else Color(0xFFF44336),
-                        trackColor = Color.LightGray.copy(alpha = 0.2f)
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                        strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
                     )
                 }
             }

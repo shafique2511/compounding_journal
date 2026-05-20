@@ -1,6 +1,5 @@
 package com.example.compoundingjournal.presentation.journal
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,7 +11,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -23,6 +21,7 @@ import com.example.compoundingjournal.data.entity.TradeEntity
 import com.example.compoundingjournal.data.local.AppDatabase
 import com.example.compoundingjournal.data.repository.TradeRepository
 import com.example.compoundingjournal.data.repository.TradeRepositoryImpl
+import com.example.compoundingjournal.presentation.components.*
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,8 +44,8 @@ fun JournalScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Journal") },
+            AppTopBar(
+                title = "Trade Journal",
                 actions = {
                     IconButton(onClick = { showFilterSheet = true }) {
                         Icon(Icons.Default.FilterList, contentDescription = "Filter")
@@ -55,40 +54,33 @@ fun JournalScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onAddTrade) {
+            FloatingActionButton(
+                onClick = onAddTrade,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Trade")
             }
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
-            OutlinedTextField(
-                value = uiState.searchQuery,
-                onValueChange = { viewModel.onSearchQueryChange(it) },
-                label = { Text("Search symbol, strategy, notes...") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                trailingIcon = {
-                    if (uiState.searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
-                            Icon(Icons.Default.Close, contentDescription = "Clear")
-                        }
-                    }
-                }
+            SearchBar(
+                query = uiState.searchQuery,
+                onQueryChange = { viewModel.onSearchQueryChange(it) }
             )
 
             if (uiState.trades.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No trades found", style = MaterialTheme.typography.bodyLarge)
-                }
+                EmptyState(
+                    message = if (uiState.searchQuery.isEmpty()) "Your journal is empty.\nTap + to add your first trade." else "No trades match your search.",
+                    icon = Icons.Default.Inventory2
+                )
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(uiState.trades) { trade ->
+                    items(uiState.trades, key = { it.id }) { trade ->
                         TradeCard(
                             trade = trade,
                             onClick = { onTradeClick(trade.id) },
@@ -101,37 +93,26 @@ fun JournalScreen(
         }
 
         if (showDeleteDialog != null) {
-            AlertDialog(
-                onDismissRequest = { showDeleteDialog = null },
-                title = { Text("Delete Trade") },
-                text = { Text("Are you sure you want to delete trade #${showDeleteDialog?.tradeNumber}? This will recalculate subsequent balances.") },
-                confirmButton = {
-                    TextButton(onClick = {
-                        showDeleteDialog?.let { viewModel.deleteTrade(it) }
-                        showDeleteDialog = null
-                    }) {
-                        Text("Delete", color = MaterialTheme.colorScheme.error)
-                    }
+            ConfirmationDialog(
+                title = "Delete Trade",
+                text = "Are you sure you want to delete trade #${showDeleteDialog?.tradeNumber}? This will automatically recalculate subsequent trade balances.",
+                onConfirm = {
+                    showDeleteDialog?.let { viewModel.deleteTrade(it) }
+                    showDeleteDialog = null
                 },
-                dismissButton = {
-                    TextButton(onClick = { showDeleteDialog = null }) {
-                        Text("Cancel")
-                    }
-                }
+                onDismiss = { showDeleteDialog = null }
             )
         }
 
         if (showFilterSheet) {
             ModalBottomSheet(
-                onDismissRequest = { showFilterSheet = false }
+                onDismissRequest = { showFilterSheet = false },
+                dragHandle = { BottomSheetDefaults.DragHandle() }
             ) {
                 FilterOptionsContent(
                     uiState = uiState,
                     onSortByChange = { viewModel.onSortByChange(it) },
-                    onFilterSymbolChange = { viewModel.onFilterSymbolChange(it) },
-                    onFilterTimeframeChange = { viewModel.onFilterTimeframeChange(it) },
                     onFilterStatusChange = { viewModel.onFilterStatusChange(it) },
-                    onFilterStrategyChange = { viewModel.onFilterStrategyChange(it) },
                     onClearFilters = {
                         viewModel.onFilterSymbolChange(null)
                         viewModel.onFilterTimeframeChange(null)
@@ -145,94 +126,31 @@ fun JournalScreen(
 }
 
 @Composable
-fun TradeCard(
-    trade: TradeEntity,
-    onClick: () -> Unit,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit
-) {
-    val statusColor = when (trade.status.uppercase()) {
-        "WIN" -> Color(0xFF4CAF50)
-        "LOSS" -> Color(0xFFF44336)
-        "BREAKEVEN" -> Color.Gray
-        "RUNNING" -> Color(0xFF2196F3)
-        "CANCELLED" -> Color.LightGray
-        else -> Color.Black
-    }
-
-    val pnlColor = if (trade.netProfitLoss >= 0) Color(0xFF4CAF50) else Color(0xFFF44336)
-
-    Card(
+fun SearchBar(query: String, onQueryChange: (String) -> Unit) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        placeholder = { Text("Search symbol, strategy, notes...") },
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text("#${trade.tradeNumber} • ${trade.date} ${trade.time}", style = MaterialTheme.typography.bodySmall)
-                    Text("${trade.symbol} • ${trade.direction} • ${trade.timeframe}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                }
-                Surface(
-                    color = statusColor.copy(alpha = 0.1f),
-                    shape = MaterialTheme.shapes.small
-                ) {
-                    Text(
-                        text = trade.status,
-                        color = statusColor,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelMedium
-                    )
+            .padding(16.dp),
+        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+        trailingIcon = {
+            if (query.isNotEmpty()) {
+                IconButton(onClick = { onQueryChange("") }) {
+                    Icon(Icons.Default.Close, contentDescription = "Clear")
                 }
             }
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column {
-                    Text("Net P/L", style = MaterialTheme.typography.labelSmall)
-                    Text(
-                        text = String.format("%.2f", trade.netProfitLoss),
-                        color = pnlColor,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("Ending Balance", style = MaterialTheme.typography.labelSmall)
-                    Text(
-                        text = String.format("%.2f", trade.endingBalance),
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-            }
-            if (trade.withdrawalAmount > 0) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    "Withdrawal: ${String.format("%.2f", trade.withdrawalAmount)}",
-                    color = Color(0xFFFF9800),
-                    style = MaterialTheme.typography.labelSmall
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                IconButton(onClick = onEdit) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(20.dp))
-                }
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(20.dp))
-                }
-            }
-        }
-    }
+        },
+        shape = MaterialTheme.shapes.medium,
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+            focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+            unfocusedIndicatorColor = MaterialTheme.colorScheme.outlineVariant
+        ),
+        singleLine = true
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -240,44 +158,53 @@ fun TradeCard(
 fun FilterOptionsContent(
     uiState: JournalUiState,
     onSortByChange: (SortOption) -> Unit,
-    onFilterSymbolChange: (String?) -> Unit,
-    onFilterTimeframeChange: (String?) -> Unit,
     onFilterStatusChange: (String?) -> Unit,
-    onFilterStrategyChange: (String?) -> Unit,
     onClearFilters: () -> Unit
 ) {
     Column(
         modifier = Modifier
-            .padding(16.dp)
+            .padding(horizontal = 24.dp, vertical = 16.dp)
             .fillMaxWidth()
     ) {
-        Text("Sort By", style = MaterialTheme.typography.titleSmall)
+        Text("Sort By", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(12.dp))
         Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SortOption.values().forEach { option ->
                 FilterChip(
                     selected = uiState.sortBy == option,
                     onClick = { onSortByChange(option) },
-                    label = { Text(option.name.replace("_", " ").lowercase().replaceFirstChar { it.titlecase(Locale.getDefault()) }) }
+                    label = { Text(option.name.replace("_", " ").lowercase().replaceFirstChar { it.titlecase(Locale.getDefault()) }) },
+                    shape = MaterialTheme.shapes.medium
                 )
             }
         }
-        Spacer(modifier = Modifier.height(16.dp))
-        Text("Status Filter", style = MaterialTheme.typography.titleSmall)
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Text("Filter by Status", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(12.dp))
         val statuses = listOf("WIN", "LOSS", "BREAKEVEN", "RUNNING", "CANCELLED")
         Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             statuses.forEach { status ->
                 FilterChip(
                     selected = uiState.filterStatus == status,
                     onClick = { onFilterStatusChange(if (uiState.filterStatus == status) null else status) },
-                    label = { Text(status) }
+                    label = { Text(status) },
+                    shape = MaterialTheme.shapes.medium
                 )
             }
         }
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = onClearFilters, modifier = Modifier.fillMaxWidth()) {
+        
+        Spacer(modifier = Modifier.height(32.dp))
+        
+        Button(
+            onClick = onClearFilters,
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.medium
+        ) {
             Text("Clear All Filters")
         }
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(48.dp))
     }
 }
 

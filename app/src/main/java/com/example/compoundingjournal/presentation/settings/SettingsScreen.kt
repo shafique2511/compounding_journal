@@ -10,16 +10,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.compoundingjournal.data.entity.SettingsEntity
 import com.example.compoundingjournal.data.local.AppDatabase
 import com.example.compoundingjournal.data.repository.SettingsRepositoryImpl
 import com.example.compoundingjournal.data.repository.TradeRepositoryImpl
-import com.example.compoundingjournal.presentation.addtrade.DropdownField
+import com.example.compoundingjournal.presentation.components.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,7 +38,7 @@ fun SettingsScreen(onNavigateToExportBackup: () -> Unit) {
     
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    // Local state for form fields to allow editing before saving
+    // Local state for form fields
     var initialBalance by remember { mutableStateOf("") }
     var currency by remember { mutableStateOf("USD") }
     var timezoneOffset by remember { mutableStateOf("UTC+0") }
@@ -78,29 +78,35 @@ fun SettingsScreen(onNavigateToExportBackup: () -> Unit) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Settings") },
+            AppTopBar(
+                title = "Preferences",
                 actions = {
-                    IconButton(onClick = {
-                        uiState.settings?.let { current ->
-                            val updated = current.copy(
-                                initialBalance = initialBalance.toDoubleOrNull() ?: current.initialBalance,
-                                currency = currency,
-                                timezoneOffset = timezoneOffset,
-                                dateFormat = dateFormat,
-                                timeFormat = timeFormat,
-                                autoTradeNumber = autoTradeNumber,
-                                defaultTimeframe = defaultTimeframe,
-                                defaultSymbol = defaultSymbol,
-                                defaultCommission = defaultCommission.toDoubleOrNull() ?: current.defaultCommission,
-                                defaultSwap = defaultSwap.toDoubleOrNull() ?: current.defaultSwap,
-                                themeMode = themeMode,
-                                accentColor = accentColor
-                            )
-                            viewModel.updateSettings(updated)
-                        }
-                    }) {
-                        Icon(Icons.Default.Save, contentDescription = "Save")
+                    Button(
+                        onClick = {
+                            uiState.settings?.let { current ->
+                                val updated = current.copy(
+                                    initialBalance = initialBalance.toDoubleOrNull() ?: current.initialBalance,
+                                    currency = currency,
+                                    timezoneOffset = timezoneOffset,
+                                    dateFormat = dateFormat,
+                                    timeFormat = timeFormat,
+                                    autoTradeNumber = autoTradeNumber,
+                                    defaultTimeframe = defaultTimeframe,
+                                    defaultSymbol = defaultSymbol,
+                                    defaultCommission = defaultCommission.toDoubleOrNull() ?: current.defaultCommission,
+                                    defaultSwap = defaultSwap.toDoubleOrNull() ?: current.defaultSwap,
+                                    themeMode = themeMode,
+                                    accentColor = accentColor
+                                )
+                                viewModel.updateSettings(updated)
+                            }
+                        },
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
+                        Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Save")
                     }
                 }
             )
@@ -115,95 +121,106 @@ fun SettingsScreen(onNavigateToExportBackup: () -> Unit) {
             Column(
                 modifier = Modifier
                     .padding(padding)
-                    .padding(16.dp)
+                    .padding(horizontal = 16.dp)
                     .verticalScroll(rememberScrollState())
                     .fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                SettingsSection("Account Settings") {
-                    OutlinedTextField(
+                Spacer(modifier = Modifier.height(8.dp))
+
+                SectionCard("Financial Account") {
+                    MoneyInputField(
                         value = initialBalance,
                         onValueChange = { initialBalance = it },
-                        label = { Text("Initial Balance") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        modifier = Modifier.fillMaxWidth()
+                        label = "Starting Capital"
                     )
-                    DropdownField(
-                        label = "Account Currency",
+                    Spacer(modifier = Modifier.height(12.dp))
+                    AppDropdownField(
+                        label = "Default Currency",
                         options = listOf("USD", "MYR", "EUR", "GBP", "JPY", "AUD", "Custom"),
                         selectedOption = currency,
                         onOptionSelected = { currency = it }
                     )
                 }
 
-                SettingsSection("Time Settings") {
+                SectionCard("Regional & Format") {
                     OutlinedTextField(
                         value = timezoneOffset,
                         onValueChange = { timezoneOffset = it },
-                        label = { Text("Timezone Offset (Display only)") },
-                        modifier = Modifier.fillMaxWidth()
+                        label = { Text("Display Timezone Offset") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.medium
                     )
-                    DropdownField(
-                        label = "Date Format",
-                        options = listOf("DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"),
-                        selectedOption = dateFormat,
-                        onOptionSelected = { dateFormat = it }
-                    )
-                    DropdownField(
-                        label = "Time Format",
-                        options = listOf("12-hour", "24-hour"),
-                        selectedOption = timeFormat,
-                        onOptionSelected = { timeFormat = it }
-                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        AppDropdownField(
+                            label = "Date Format",
+                            options = listOf("DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"),
+                            selectedOption = dateFormat,
+                            onOptionSelected = { dateFormat = it },
+                            modifier = Modifier.weight(1f)
+                        )
+                        AppDropdownField(
+                            label = "Time Format",
+                            options = listOf("12-hour", "24-hour"),
+                            selectedOption = timeFormat,
+                            onOptionSelected = { timeFormat = it },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
 
-                SettingsSection("Journal Settings") {
+                SectionCard("Journal Defaults") {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Auto Trade Number")
+                        Text("Auto-generate Trade IDs", style = MaterialTheme.typography.bodyMedium)
                         Switch(checked = autoTradeNumber, onCheckedChange = { autoTradeNumber = it })
                     }
-                    DropdownField(
+                    Spacer(modifier = Modifier.height(8.dp))
+                    AppDropdownField(
                         label = "Default Timeframe",
                         options = listOf("M1", "M5", "M15", "M30", "H1", "H4", "D1", "W1", "MN1"),
                         selectedOption = defaultTimeframe,
                         onOptionSelected = { defaultTimeframe = it }
                     )
+                    Spacer(modifier = Modifier.height(12.dp))
                     OutlinedTextField(
                         value = defaultSymbol,
                         onValueChange = { defaultSymbol = it },
                         label = { Text("Default Symbol") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.medium,
+                        placeholder = { Text("e.g. BTCUSD") }
                     )
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedTextField(
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        MoneyInputField(
                             value = defaultCommission,
                             onValueChange = { defaultCommission = it },
-                            label = { Text("Def. Commission") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            label = "Def. Commission",
                             modifier = Modifier.weight(1f)
                         )
-                        OutlinedTextField(
+                        MoneyInputField(
                             value = defaultSwap,
                             onValueChange = { defaultSwap = it },
-                            label = { Text("Def. Swap") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            label = "Def. Swap",
                             modifier = Modifier.weight(1f)
                         )
                     }
                 }
 
-                SettingsSection("Appearance") {
-                    DropdownField(
+                SectionCard("App Appearance") {
+                    AppDropdownField(
                         label = "Theme Mode",
                         options = listOf("LIGHT", "DARK", "SYSTEM"),
                         selectedOption = themeMode,
                         onOptionSelected = { themeMode = it }
                     )
-                    DropdownField(
+                    Spacer(modifier = Modifier.height(12.dp))
+                    AppDropdownField(
                         label = "Accent Color",
                         options = listOf("BLUE", "GREEN", "PURPLE", "ORANGE", "RED"),
                         selectedOption = accentColor,
@@ -211,53 +228,40 @@ fun SettingsScreen(onNavigateToExportBackup: () -> Unit) {
                     )
                 }
 
-                SettingsSection("Data Management") {
-                    Button(onClick = onNavigateToExportBackup, modifier = Modifier.fillMaxWidth()) {
-                        Text("Export & Backup")
-                    }
+                SectionCard("Data Tools") {
                     Button(
-                        onClick = { showDeleteDialog = true },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                        onClick = onNavigateToExportBackup, 
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        shape = MaterialTheme.shapes.medium
                     ) {
-                        Text("Delete All Trades")
+                        Text("Open Export & Backup Tools")
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedButton(
+                        onClick = { showDeleteDialog = true },
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        shape = MaterialTheme.shapes.medium,
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("Purge All Trade Data")
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(48.dp))
             }
         }
 
         if (showDeleteDialog) {
-            AlertDialog(
-                onDismissRequest = { showDeleteDialog = false },
-                title = { Text("Delete All Trades") },
-                text = { Text("Are you absolutely sure? This cannot be undone.") },
-                confirmButton = {
-                    TextButton(onClick = {
-                        viewModel.deleteAllTrades()
-                        showDeleteDialog = false
-                    }) {
-                        Text("Delete All", color = MaterialTheme.colorScheme.error)
-                    }
+            ConfirmationDialog(
+                title = "Erase All Data",
+                text = "This will permanently delete every trade in your journal. This action cannot be undone.",
+                confirmText = "Erase Everything",
+                onConfirm = {
+                    viewModel.deleteAllTrades()
+                    showDeleteDialog = false
                 },
-                dismissButton = {
-                    TextButton(onClick = { showDeleteDialog = false }) {
-                        Text("Cancel")
-                    }
-                }
+                onDismiss = { showDeleteDialog = false }
             )
-        }
-    }
-}
-
-@Composable
-fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-            Divider(modifier = Modifier.padding(vertical = 4.dp))
-            content()
         }
     }
 }

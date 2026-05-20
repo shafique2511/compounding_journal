@@ -21,6 +21,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.compoundingjournal.data.local.AppDatabase
 import com.example.compoundingjournal.data.repository.TradeRepository
 import com.example.compoundingjournal.data.repository.TradeRepositoryImpl
+import com.example.compoundingjournal.presentation.components.AppTopBar
+import com.example.compoundingjournal.presentation.components.EmptyState
+import com.example.compoundingjournal.presentation.components.SectionCard
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,51 +39,51 @@ fun AnalyticsScreen() {
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Performance Analytics") }) }
+        topBar = { AppTopBar(title = "Deep Analytics") }
     ) { padding ->
         if (uiState.trades.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Not enough data for analytics", style = MaterialTheme.typography.bodyLarge)
-            }
+            EmptyState(
+                message = "Not enough trade data to generate analytics.\nStart journaling to see insights here."
+            )
         } else {
             LazyColumn(
                 modifier = Modifier
                     .padding(padding)
                     .fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
                 item {
-                    AnalyticsSection("Performance Summary") {
+                    SectionCard("Performance Summary") {
                         val s = uiState.summary
-                        StatRow("Total Trades", s.totalTrades.toString())
-                        StatRow("Wins / Losses", "${s.wins} / ${s.losses}")
-                        StatRow("Win Rate", "${String.format("%.1f", s.winRate)}%")
-                        StatRow("Profit Factor", String.format("%.2f", s.profitFactor))
-                        StatRow("Net Profit", String.format("%.2f", s.netProfit), color = if (s.netProfit >= 0) Color(0xFF4CAF50) else Color(0xFFF44336))
-                        StatRow("Avg Profit / Loss", "${String.format("%.2f", s.averageProfit)} / ${String.format("%.2f", s.averageLoss)}")
+                        AnalyticsRow("Total Trades", s.totalTrades.toString())
+                        AnalyticsRow("Wins / Losses", "${s.wins} / ${s.losses}")
+                        AnalyticsRow("Win Rate", "${String.format("%.1f", s.winRate)}%", isBold = true)
+                        AnalyticsRow("Profit Factor", String.format("%.2f", s.profitFactor))
+                        AnalyticsRow("Net Profit", String.format("%.2f", s.netProfit), color = if (s.netProfit >= 0) Color(0xFF4CAF50) else Color(0xFFF44336), isBold = true)
+                        AnalyticsRow("Avg Profit / Loss", "${String.format("%.2f", s.averageProfit)} / ${String.format("%.2f", s.averageLoss)}")
                     }
                 }
 
                 item {
-                    AnalyticsSection("Risk Analysis") {
+                    SectionCard("Risk & Drawdown") {
                         val r = uiState.riskAnalysis
-                        StatRow("Avg Risk Per Trade", String.format("%.2f", r.averageRisk))
-                        StatRow("Avg R Multiple", String.format("%.2f", r.averageR))
-                        StatRow("Best / Worst R", "${String.format("%.2f", r.bestR)} / ${String.format("%.2f", r.worstR)}")
-                        StatRow("Max Drawdown", String.format("%.2f", r.maxDrawdown))
+                        AnalyticsRow("Avg Risk Per Trade", String.format("%.2f", r.averageRisk))
+                        AnalyticsRow("Avg R Multiple", String.format("%.2f", r.averageR), isBold = true)
+                        AnalyticsRow("Best / Worst R", "${String.format("%.2f", r.bestR)} / ${String.format("%.2f", r.worstR)}")
+                        AnalyticsRow("Maximum Drawdown", String.format("%.2f", r.maxDrawdown), color = Color(0xFFFF9800))
                     }
                 }
 
                 item {
-                    AnalyticsSection("Timeframe Performance") {
+                    SectionCard("Timeframe Breakdown") {
                         uiState.timeframeAnalysis.forEach { stat ->
-                            ExpandableStatItem(
+                            ExpandableAnalyticItem(
                                 title = stat.timeframe,
-                                subtitle = "Trades: ${stat.totalTrades} | Win Rate: ${String.format("%.1f", stat.winRate)}%",
+                                subtitle = "Trades: ${stat.totalTrades} • WR: ${String.format("%.1f", stat.winRate)}%",
                                 mainValue = String.format("%.2f", stat.netProfit),
                                 details = {
-                                    StatRow("Average R", String.format("%.2f", stat.averageR))
+                                    AnalyticsRow("Average R", String.format("%.2f", stat.averageR))
                                 }
                             )
                         }
@@ -87,15 +91,15 @@ fun AnalyticsScreen() {
                 }
 
                 item {
-                    AnalyticsSection("Symbol Analysis") {
+                    SectionCard("Asset Performance") {
                         uiState.symbolAnalysis.forEach { stat ->
-                            ExpandableStatItem(
+                            ExpandableAnalyticItem(
                                 title = stat.symbol,
-                                subtitle = "Trades: ${stat.totalTrades} | WR: ${String.format("%.1f", stat.winRate)}%",
+                                subtitle = "Trades: ${stat.totalTrades} • Win Rate: ${String.format("%.1f", stat.winRate)}%",
                                 mainValue = String.format("%.2f", stat.netProfit),
                                 details = {
-                                    StatRow("Best Trade", String.format("%.2f", stat.bestTrade))
-                                    StatRow("Worst Trade", String.format("%.2f", stat.worstTrade))
+                                    AnalyticsRow("Best Individual Trade", String.format("%.2f", stat.bestTrade))
+                                    AnalyticsRow("Worst Individual Trade", String.format("%.2f", stat.worstTrade))
                                 }
                             )
                         }
@@ -103,14 +107,14 @@ fun AnalyticsScreen() {
                 }
 
                 item {
-                    AnalyticsSection("Strategy Analysis") {
+                    SectionCard("Strategy Insights") {
                         uiState.strategyAnalysis.forEach { stat ->
-                            ExpandableStatItem(
+                            ExpandableAnalyticItem(
                                 title = stat.strategy,
-                                subtitle = "Trades: ${stat.totalTrades} | WR: ${String.format("%.1f", stat.winRate)}%",
+                                subtitle = "Trades: ${stat.totalTrades} • Win Rate: ${String.format("%.1f", stat.winRate)}%",
                                 mainValue = String.format("%.2f", stat.netProfit),
                                 details = {
-                                    StatRow("Average R", String.format("%.2f", stat.averageR))
+                                    AnalyticsRow("Average R-Multiple", String.format("%.2f", stat.averageR))
                                 }
                             )
                         }
@@ -118,57 +122,57 @@ fun AnalyticsScreen() {
                 }
 
                 item {
-                    AnalyticsSection("Mistake Analysis") {
+                    SectionCard("Common Mistakes") {
                         if (uiState.commonMistakes.isEmpty()) {
-                            Text("No mistakes recorded yet.", style = MaterialTheme.typography.bodySmall)
+                            Text("No mistakes documented in your notes.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                         } else {
                             uiState.commonMistakes.forEach { (mistake, count) ->
-                                StatRow(mistake.replaceFirstChar { it.uppercase() }, "$count occurrences")
+                                AnalyticsRow(mistake.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }, "$count times")
                             }
                         }
                     }
                 }
 
                 item {
-                    AnalyticsSection("Monthly Analysis") {
+                    SectionCard("Monthly Progress") {
                         uiState.monthlyAnalysis.forEach { stat ->
-                            ExpandableStatItem(
+                            ExpandableAnalyticItem(
                                 title = stat.month,
-                                subtitle = "Trades: ${stat.totalTrades} | Withdrawals: ${stat.withdrawals}",
+                                subtitle = "Trades: ${stat.totalTrades} • Withdrawals: ${stat.withdrawals}",
                                 mainValue = String.format("%.2f", stat.netProfit),
                                 details = {
-                                    StatRow("Ending Balance", String.format("%.2f", stat.endingBalance))
+                                    AnalyticsRow("Ending Balance", String.format("%.2f", stat.endingBalance))
                                 }
                             )
                         }
                     }
                 }
+                
+                item { Spacer(modifier = Modifier.height(32.dp)) }
             }
         }
     }
 }
 
 @Composable
-fun AnalyticsSection(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
-            content()
-        }
+fun AnalyticsRow(label: String, value: String, color: Color = MaterialTheme.colorScheme.onSurface, isBold: Boolean = false) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), 
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            text = value, 
+            style = MaterialTheme.typography.bodyMedium, 
+            fontWeight = if (isBold) FontWeight.ExtraBold else FontWeight.Bold, 
+            color = color
+        )
     }
 }
 
 @Composable
-fun StatRow(label: String, value: String, color: Color = MaterialTheme.colorScheme.onSurface) {
-    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, style = MaterialTheme.typography.bodyMedium)
-        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = color)
-    }
-}
-
-@Composable
-fun ExpandableStatItem(
+fun ExpandableAnalyticItem(
     title: String,
     subtitle: String,
     mainValue: String,
@@ -181,33 +185,36 @@ fun ExpandableStatItem(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { expanded = !expanded }
-                .padding(vertical = 8.dp),
+                .padding(vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                Text(subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    mainValue, 
+                    text = mainValue, 
                     style = MaterialTheme.typography.bodyLarge, 
                     fontWeight = FontWeight.Bold,
                     color = if (mainValue.startsWith("-")) Color(0xFFF44336) else if (mainValue == "0.00") Color.Gray else Color(0xFF4CAF50)
                 )
+                Spacer(modifier = Modifier.width(8.dp))
                 Icon(
                     imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = null
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
         AnimatedVisibility(visible = expanded) {
-            Column(modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)) {
+            Column(modifier = Modifier.padding(start = 16.dp, bottom = 12.dp)) {
                 details()
             }
         }
-        Divider(thickness = 0.5.dp)
+        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
     }
 }
 
