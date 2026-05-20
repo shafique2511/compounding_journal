@@ -30,7 +30,8 @@ class SettingsRepositoryImpl(private val settingsDao: SettingsDao) : SettingsRep
                 defaultCommission = 0.0,
                 defaultSwap = 0.0,
                 themeMode = "SYSTEM",
-                accentColor = "BLUE"
+                accentColor = "BLUE",
+                autoTradeNumber = true
             )
             settingsDao.insertSettings(defaultSettings)
         }

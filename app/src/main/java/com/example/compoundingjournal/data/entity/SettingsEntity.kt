@@ -17,5 +17,6 @@ data class SettingsEntity(
     val defaultCommission: Double,
     val defaultSwap: Double,
     val themeMode: String,
-    val accentColor: String
+    val accentColor: String,
+    val autoTradeNumber: Boolean = true
 )
