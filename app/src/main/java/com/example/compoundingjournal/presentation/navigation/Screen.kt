@@ -1,0 +1,24 @@
+package com.example.compoundingjournal.presentation.navigation
+
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.ui.graphics.vector.ImageVector
+
+sealed class Screen(val route: String, val title: String, val icon: ImageVector? = null) {
+    object Dashboard : Screen("dashboard", "Dashboard", Icons.Default.Dashboard)
+    object Journal : Screen("journal", "Journal", Icons.Default.List)
+    object Analytics : Screen("analytics", "Analytics", Icons.Default.Analytics)
+    object Settings : Screen("settings", "Settings", Icons.Default.Settings)
+    
+    object AddTrade : Screen("add_trade", "Add Trade")
+    object EditTrade : Screen("edit_trade/{tradeId}", "Edit Trade") {
+        fun createRoute(tradeId: Long) = "edit_trade/$tradeId"
+    }
+    object TradeDetail : Screen("trade_detail/{tradeId}", "Trade Detail") {
+        fun createRoute(tradeId: Long) = "trade_detail/$tradeId"
+    }
+    object ExportBackup : Screen("export_backup", "Export & Backup")
+}
