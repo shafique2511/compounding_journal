@@ -110,19 +110,63 @@ data class RiskRuleAnalysis(
 
 class AnalyticsViewModel(
     private val tradeRepository: TradeRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val presetRepository: com.example.compoundingjournal.data.repository.FilterPresetRepository
 ) : ViewModel() {
+
+    private val _filterSymbol = MutableStateFlow<String?>(null)
+    private val _filterTimeframe = MutableStateFlow<String?>(null)
+    private val _filterStatus = MutableStateFlow<String?>(null)
+    private val _filterStrategy = MutableStateFlow<String?>(null)
+    private val _filterGrade = MutableStateFlow<String?>(null)
+    private val _filterRule = MutableStateFlow<String?>(null)
+
+    val presets = presetRepository.getAllPresets()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val uiState: StateFlow<AnalyticsUiState> = combine(
         tradeRepository.getAllTrades(),
-        settingsRepository.getSettings()
-    ) { trades, settings ->
-        if (trades.isEmpty()) {
+        settingsRepository.getSettings(),
+        _filterSymbol,
+        _filterTimeframe,
+        _filterStatus,
+        _filterStrategy,
+        _filterGrade,
+        _filterRule
+    ) { args ->
+        val trades = args[0] as List<TradeEntity>
+        val settings = args[1] as com.example.compoundingjournal.data.entity.SettingsEntity?
+        val symbol = args[2] as String?
+        val tf = args[3] as String?
+        val status = args[4] as String?
+        val strategy = args[5] as String?
+        val grade = args[6] as String?
+        val rule = args[7] as String?
+
+        val filtered = trades.filter { trade ->
+            (symbol == null || trade.symbol == symbol) &&
+            (tf == null || trade.timeframe == tf) &&
+            (status == null || trade.status == status) &&
+            (strategy == null || trade.strategyName == strategy) &&
+            (grade == null || trade.tradeQualityGrade == grade) &&
+            (rule == null || trade.ruleFollowed == rule)
+        }
+
+        if (filtered.isEmpty()) {
             AnalyticsUiState()
         } else {
-            calculateAnalytics(trades, settings)
+            calculateAnalytics(filtered, settings)
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AnalyticsUiState(isLoading = true))
+
+    fun applyPreset(preset: com.example.compoundingjournal.data.entity.FilterPresetEntity) {
+        _filterSymbol.value = preset.symbolFilter.ifBlank { null }
+        _filterTimeframe.value = preset.timeframeFilter.ifBlank { null }
+        _filterStatus.value = preset.statusFilter.ifBlank { null }
+        _filterStrategy.value = preset.strategyFilter.ifBlank { null }
+        _filterGrade.value = preset.qualityGradeFilter.ifBlank { null }
+        _filterRule.value = preset.ruleFollowedFilter.ifBlank { null }
+    }
 
     private fun calculateAnalytics(trades: List<TradeEntity>, settings: com.example.compoundingjournal.data.entity.SettingsEntity?): AnalyticsUiState {
         val summary = calculateSummary(trades)

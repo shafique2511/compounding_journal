@@ -17,6 +17,7 @@ import com.example.compoundingjournal.presentation.settings.SettingsScreen
 import com.example.compoundingjournal.presentation.strategy.AddStrategyScreen
 import com.example.compoundingjournal.presentation.strategy.StrategyPlaybookScreen
 import com.example.compoundingjournal.presentation.calendar.CalendarScreen
+import com.example.compoundingjournal.presentation.filter.FilterPresetScreen
 
 @Composable
 fun NavGraph(navController: NavHostController) {
@@ -45,7 +46,8 @@ fun NavGraph(navController: NavHostController) {
         composable(Screen.Settings.route) {
             SettingsScreen(
                 onNavigateToExportBackup = { navController.navigate(Screen.ExportBackup.route) },
-                onNavigateToStrategyPlaybook = { navController.navigate(Screen.StrategyPlaybook.route) }
+                onNavigateToStrategyPlaybook = { navController.navigate(Screen.StrategyPlaybook.route) },
+                onNavigateToFilterPresets = { navController.navigate(Screen.FilterPresets.route) }
             )
         }
         composable(Screen.AddTrade.route) {
@@ -88,6 +90,9 @@ fun NavGraph(navController: NavHostController) {
         ) { backStackEntry ->
             val strategyId = backStackEntry.arguments?.getLong("strategyId") ?: 0L
             AddStrategyScreen(strategyId = strategyId, onNavigateBack = { navController.popBackStack() })
+        }
+        composable(Screen.FilterPresets.route) {
+            FilterPresetScreen(onNavigateBack = { navController.popBackStack() })
         }
     }
 }

@@ -29,4 +29,6 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector?
     object EditStrategy : Screen("edit_strategy/{strategyId}", "Edit Strategy") {
         fun createRoute(strategyId: Long) = "edit_strategy/$strategyId"
     }
+    
+    object FilterPresets : Screen("filter_presets", "Filter Presets")
 }

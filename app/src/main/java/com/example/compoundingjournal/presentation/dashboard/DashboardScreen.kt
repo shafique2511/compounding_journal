@@ -12,6 +12,8 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -42,17 +44,53 @@ fun DashboardScreen() {
     val database = remember { AppDatabase.getDatabase(context) }
     val tradeRepository = remember { TradeRepositoryImpl(database.tradeDao()) }
     val settingsRepository = remember { SettingsRepositoryImpl(database.settingsDao()) }
+    val presetRepository = remember { com.example.compoundingjournal.data.repository.FilterPresetRepositoryImpl(database.filterPresetDao()) }
     
     val viewModel: DashboardViewModel = viewModel(
-        factory = DashboardViewModelFactory(tradeRepository, settingsRepository)
+        factory = DashboardViewModelFactory(tradeRepository, settingsRepository, presetRepository)
     )
 
     val uiState by viewModel.uiState.collectAsState()
+    val presets by viewModel.presets.collectAsState()
     val pullRefreshState = rememberPullRefreshState(uiState.isRefreshing, { viewModel.refresh() })
+    
+    var showPresetMenu by remember { mutableStateOf(false) }
+    var showSaveDialog by remember { mutableStateOf(false) }
+    var newPresetName by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {
-            AppTopBar(title = "Dashboard")
+            AppTopBar(
+                title = "Dashboard",
+                actions = {
+                    Box {
+                        IconButton(onClick = { showPresetMenu = true }) {
+                            Icon(Icons.Default.FilterList, contentDescription = "Presets")
+                        }
+                        DropdownMenu(expanded = showPresetMenu, onDismissRequest = { showPresetMenu = false }) {
+                            DropdownMenuItem(
+                                text = { Text("Save Current Filter") },
+                                onClick = { 
+                                    showPresetMenu = false
+                                    showSaveDialog = true 
+                                }
+                            )
+                            if (presets.isNotEmpty()) {
+                                Divider()
+                                presets.forEach { preset ->
+                                    DropdownMenuItem(
+                                        text = { Text(preset.presetName) },
+                                        onClick = {
+                                            viewModel.applyPreset(preset)
+                                            showPresetMenu = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            )
         }
     ) { padding ->
         Box(modifier = Modifier.padding(padding).pullRefresh(pullRefreshState)) {
@@ -156,6 +194,37 @@ fun DashboardScreen() {
             }
 
             PullRefreshIndicator(uiState.isRefreshing, pullRefreshState, Modifier.align(Alignment.TopCenter))
+        }
+
+        if (showSaveDialog) {
+            AlertDialog(
+                onDismissRequest = { showSaveDialog = false },
+                title = { Text("Save Filter Preset") },
+                text = {
+                    OutlinedTextField(
+                        value = newPresetName,
+                        onValueChange = { newPresetName = it },
+                        label = { Text("Preset Name") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        if (newPresetName.isNotBlank()) {
+                            viewModel.saveCurrentFilterAsPreset(newPresetName)
+                            newPresetName = ""
+                            showSaveDialog = false
+                        }
+                    }) {
+                        Text("Save")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showSaveDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
     }
 }

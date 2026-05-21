@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,14 +38,41 @@ fun AnalyticsScreen() {
     val database = remember { AppDatabase.getDatabase(context) }
     val repository = remember { TradeRepositoryImpl(database.tradeDao()) }
     val settingsRepository = remember { SettingsRepositoryImpl(database.settingsDao()) }
+    val presetRepository = remember { com.example.compoundingjournal.data.repository.FilterPresetRepositoryImpl(database.filterPresetDao()) }
     val viewModel: AnalyticsViewModel = viewModel(
-        factory = AnalyticsViewModelFactory(repository, settingsRepository)
+        factory = AnalyticsViewModelFactory(repository, settingsRepository, presetRepository)
     )
 
     val uiState by viewModel.uiState.collectAsState()
+    val presets by viewModel.presets.collectAsState()
+    var showPresetMenu by remember { mutableStateOf(false) }
 
     Scaffold(
-        topBar = { AppTopBar(title = "Deep Analytics") }
+        topBar = {
+            AppTopBar(
+                title = "Deep Analytics",
+                actions = {
+                    if (presets.isNotEmpty()) {
+                        Box {
+                            IconButton(onClick = { showPresetMenu = true }) {
+                                Icon(Icons.Default.FilterList, contentDescription = "Presets")
+                            }
+                            DropdownMenu(expanded = showPresetMenu, onDismissRequest = { showPresetMenu = false }) {
+                                presets.forEach { preset ->
+                                    DropdownMenuItem(
+                                        text = { Text(preset.presetName) },
+                                        onClick = {
+                                            viewModel.applyPreset(preset)
+                                            showPresetMenu = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            )
+        }
     ) { padding ->
         if (uiState.trades.isEmpty()) {
             EmptyState(
@@ -278,12 +306,13 @@ fun ExpandableAnalyticItem(
 
 class AnalyticsViewModelFactory(
     private val repository: TradeRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val presetRepository: com.example.compoundingjournal.data.repository.FilterPresetRepository
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(AnalyticsViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return AnalyticsViewModel(repository, settingsRepository) as T
+            return AnalyticsViewModel(repository, settingsRepository, presetRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

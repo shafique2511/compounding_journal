@@ -25,7 +25,8 @@ import com.example.compoundingjournal.presentation.components.*
 @Composable
 fun SettingsScreen(
     onNavigateToExportBackup: () -> Unit,
-    onNavigateToStrategyPlaybook: () -> Unit
+    onNavigateToStrategyPlaybook: () -> Unit,
+    onNavigateToFilterPresets: () -> Unit
 ) {
     val context = LocalContext.current
     val database = remember { AppDatabase.getDatabase(context) }
@@ -323,6 +324,14 @@ fun SettingsScreen(
                         shape = MaterialTheme.shapes.medium
                     ) {
                         Text("Open Strategy Playbook")
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = onNavigateToFilterPresets,
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Text("Manage Filter Presets")
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     Button(

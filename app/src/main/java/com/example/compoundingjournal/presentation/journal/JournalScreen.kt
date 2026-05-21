@@ -17,8 +17,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.compoundingjournal.data.entity.FilterPresetEntity
 import com.example.compoundingjournal.data.entity.TradeEntity
 import com.example.compoundingjournal.data.local.AppDatabase
+import com.example.compoundingjournal.data.repository.FilterPresetRepository
+import com.example.compoundingjournal.data.repository.FilterPresetRepositoryImpl
 import com.example.compoundingjournal.data.repository.TradeRepository
 import com.example.compoundingjournal.data.repository.TradeRepositoryImpl
 import com.example.compoundingjournal.presentation.components.*
@@ -34,13 +37,17 @@ fun JournalScreen(
     val context = LocalContext.current
     val database = remember { AppDatabase.getDatabase(context) }
     val repository = remember { TradeRepositoryImpl(database.tradeDao()) }
+    val presetRepository = remember { FilterPresetRepositoryImpl(database.filterPresetDao()) }
     val viewModel: JournalViewModel = viewModel(
-        factory = JournalViewModelFactory(repository)
+        factory = JournalViewModelFactory(repository, presetRepository)
     )
 
     val uiState by viewModel.uiState.collectAsState()
+    val presets by viewModel.presets.collectAsState()
     var showDeleteDialog by remember { mutableStateOf<TradeEntity?>(null) }
     var showFilterSheet by remember { mutableStateOf(false) }
+    var showSavePresetDialog by remember { mutableStateOf(false) }
+    var newPresetName by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {
@@ -111,8 +118,17 @@ fun JournalScreen(
             ) {
                 FilterOptionsContent(
                     uiState = uiState,
+                    presets = presets,
                     onSortByChange = { viewModel.onSortByChange(it) },
                     onFilterStatusChange = { viewModel.onFilterStatusChange(it) },
+                    onApplyPreset = { 
+                        viewModel.applyPreset(it)
+                        showFilterSheet = false
+                    },
+                    onSavePreset = {
+                        showFilterSheet = false
+                        showSavePresetDialog = true
+                    },
                     onClearFilters = {
                         viewModel.onFilterSymbolChange(null)
                         viewModel.onFilterTimeframeChange(null)
@@ -121,6 +137,37 @@ fun JournalScreen(
                     }
                 )
             }
+        }
+
+        if (showSavePresetDialog) {
+            AlertDialog(
+                onDismissRequest = { showSavePresetDialog = false },
+                title = { Text("Save Filter Preset") },
+                text = {
+                    OutlinedTextField(
+                        value = newPresetName,
+                        onValueChange = { newPresetName = it },
+                        label = { Text("Preset Name") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        if (newPresetName.isNotBlank()) {
+                            viewModel.saveCurrentFilterAsPreset(newPresetName)
+                            newPresetName = ""
+                            showSavePresetDialog = false
+                        }
+                    }) {
+                        Text("Save")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showSavePresetDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
     }
 }
@@ -157,8 +204,11 @@ fun SearchBar(query: String, onQueryChange: (String) -> Unit) {
 @Composable
 fun FilterOptionsContent(
     uiState: JournalUiState,
+    presets: List<FilterPresetEntity>,
     onSortByChange: (SortOption) -> Unit,
     onFilterStatusChange: (String?) -> Unit,
+    onApplyPreset: (FilterPresetEntity) -> Unit,
+    onSavePreset: () -> Unit,
     onClearFilters: () -> Unit
 ) {
     Column(
@@ -166,6 +216,21 @@ fun FilterOptionsContent(
             .padding(horizontal = 24.dp, vertical = 16.dp)
             .fillMaxWidth()
     ) {
+        if (presets.isNotEmpty()) {
+            Text("Saved Presets", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                presets.forEach { preset ->
+                    AssistChip(
+                        onClick = { onApplyPreset(preset) },
+                        label = { Text(preset.presetName) },
+                        shape = MaterialTheme.shapes.medium
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+
         Text("Sort By", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(12.dp))
         Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -200,21 +265,31 @@ fun FilterOptionsContent(
         Button(
             onClick = onClearFilters,
             modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.medium
+            shape = MaterialTheme.shapes.medium,
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant, contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
         ) {
             Text("Clear All Filters")
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(
+            onClick = onSavePreset,
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.medium
+        ) {
+            Text("Save Current Filter as Preset")
         }
         Spacer(modifier = Modifier.height(48.dp))
     }
 }
 
 class JournalViewModelFactory(
-    private val repository: TradeRepository
+    private val repository: TradeRepository,
+    private val presetRepository: FilterPresetRepository
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(JournalViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return JournalViewModel(repository) as T
+            return JournalViewModel(repository, presetRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

@@ -71,11 +71,15 @@ enum class DateRangeOption {
 
 class DashboardViewModel(
     private val tradeRepository: TradeRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val presetRepository: com.example.compoundingjournal.data.repository.FilterPresetRepository
 ) : ViewModel() {
 
     private val _filters = MutableStateFlow(DashboardFilters())
     private val _isRefreshing = MutableStateFlow(false)
+
+    val presets = presetRepository.getAllPresets()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val uiState: StateFlow<DashboardUiState> = combine(
         tradeRepository.getAllTrades(),
@@ -110,6 +114,34 @@ class DashboardViewModel(
 
     fun onFilterStatusChange(status: String?) {
         _filters.update { it.copy(status = status) }
+    }
+
+    fun applyPreset(preset: com.example.compoundingjournal.data.entity.FilterPresetEntity) {
+        _filters.update { it.copy(
+            symbol = preset.symbolFilter.ifBlank { null },
+            timeframe = preset.timeframeFilter.ifBlank { null },
+            strategy = preset.strategyFilter.ifBlank { null },
+            status = preset.statusFilter.ifBlank { null }
+        ) }
+    }
+
+    fun saveCurrentFilterAsPreset(name: String) {
+        viewModelScope.launch {
+            val f = _filters.value
+            val preset = com.example.compoundingjournal.data.entity.FilterPresetEntity(
+                presetName = name,
+                symbolFilter = f.symbol ?: "",
+                timeframeFilter = f.timeframe ?: "",
+                statusFilter = f.status ?: "",
+                strategyFilter = f.strategy ?: "",
+                qualityGradeFilter = "",
+                ruleFollowedFilter = "",
+                dateFilter = "",
+                createdAt = System.currentTimeMillis(),
+                updatedAt = System.currentTimeMillis()
+            )
+            presetRepository.insertPreset(preset)
+        }
     }
 
     fun refresh() {
