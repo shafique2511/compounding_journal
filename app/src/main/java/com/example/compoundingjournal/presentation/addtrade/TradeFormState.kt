@@ -26,6 +26,32 @@ data class TradeFormState(
     val beforeScreenshotPath: String? = null,
     val afterScreenshotPath: String? = null,
     
+    // Phase 3 Checklist fields
+    val checklistTrendConfirmed: Boolean = false,
+    val checklistKeyLevelConfirmed: Boolean = false,
+    val checklistEntryReasonConfirmed: Boolean = false,
+    val checklistStopLossPlanned: Boolean = false,
+    val checklistTakeProfitPlanned: Boolean = false,
+    val checklistRiskAccepted: Boolean = false,
+    val checklistNoRevengeTrade: Boolean = false,
+    val checklistNoOverlot: Boolean = false,
+    val checklistNewsChecked: Boolean = false,
+    val checklistEmotionStable: Boolean = false,
+    val checklistScore: Double = 0.0,
+    val checklistStatus: String = "Plan Warning",
+    
+    // Phase 3 Rule tracking
+    val ruleFollowed: String = "YES",
+    val ruleBrokenNotes: String = "",
+    
+    // Other Phase 1/2 fields to preserve
+    val mistakeTags: String = "",
+    val tradeQualityScore: Double = 0.0,
+    val tradeQualityGrade: String = "",
+    val reviewCompleted: Boolean = false,
+    val reviewDate: String = "",
+    val reviewNotes: String = "",
+    
     // Calculated values (as strings for display)
     val netProfitLoss: String = "0.00",
     val endingBalance: String = "0.00",
@@ -34,5 +60,6 @@ data class TradeFormState(
     val rMultiple: String = "0.00",
     
     val isSaving: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val showChecklistWarning: Boolean = false
 )

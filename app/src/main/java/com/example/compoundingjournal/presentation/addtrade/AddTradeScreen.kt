@@ -137,6 +137,28 @@ fun AddTradeScreen(
                 )
             }
 
+            // Phase 3: Pre-Trade Checklist
+            SectionCard("Pre-Trade Checklist") {
+                ChecklistItem("Trend confirmed", uiState.checklistTrendConfirmed) { viewModel.onEvent(TradeFormEvent.ChecklistTrendChanged(it)) }
+                ChecklistItem("Key level confirmed", uiState.checklistKeyLevelConfirmed) { viewModel.onEvent(TradeFormEvent.ChecklistKeyLevelChanged(it)) }
+                ChecklistItem("Entry reason confirmed", uiState.checklistEntryReasonConfirmed) { viewModel.onEvent(TradeFormEvent.ChecklistEntryReasonChanged(it)) }
+                ChecklistItem("Stop loss planned", uiState.checklistStopLossPlanned) { viewModel.onEvent(TradeFormEvent.ChecklistStopLossChanged(it)) }
+                ChecklistItem("Take profit planned", uiState.checklistTakeProfitPlanned) { viewModel.onEvent(TradeFormEvent.ChecklistTakeProfitChanged(it)) }
+                ChecklistItem("Risk amount accepted", uiState.checklistRiskAccepted) { viewModel.onEvent(TradeFormEvent.ChecklistRiskAcceptedChanged(it)) }
+                ChecklistItem("No revenge trade", uiState.checklistNoRevengeTrade) { viewModel.onEvent(TradeFormEvent.ChecklistNoRevengeTradeChanged(it)) }
+                ChecklistItem("No overlot", uiState.checklistNoOverlot) { viewModel.onEvent(TradeFormEvent.ChecklistNoOverlotChanged(it)) }
+                ChecklistItem("News checked", uiState.checklistNewsChecked) { viewModel.onEvent(TradeFormEvent.ChecklistNewsCheckedClicked(it)) }
+                ChecklistItem("Emotion stable", uiState.checklistEmotionStable) { viewModel.onEvent(TradeFormEvent.ChecklistEmotionStableChanged(it)) }
+                
+                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                
+                val statusColor = if (uiState.checklistScore >= 80.0) Color(0xFF4CAF50) else Color(0xFFF44336)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Checklist Score: ${uiState.checklistScore.toInt()}%", fontWeight = FontWeight.Bold)
+                    Text(uiState.checklistStatus, color = statusColor, fontWeight = FontWeight.Bold)
+                }
+            }
+
             // Section 2: Price Info
             SectionCard("Execution Details") {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -222,6 +244,24 @@ fun AddTradeScreen(
                         StatLine("R Multiple", uiState.rMultiple)
                     }
                 }
+            }
+
+            // Phase 3: Rule tracking
+            SectionCard("Rule Tracking") {
+                AppDropdownField(
+                    label = "Rule Followed",
+                    options = listOf("YES", "NO", "PARTIALLY"),
+                    selectedOption = uiState.ruleFollowed,
+                    onOptionSelected = { viewModel.onEvent(TradeFormEvent.RuleFollowedChanged(it)) }
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = uiState.ruleBrokenNotes,
+                    onValueChange = { viewModel.onEvent(TradeFormEvent.RuleBrokenNotesChanged(it)) },
+                    label = { Text("Rule Broken Notes") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium
+                )
             }
 
             // Section 4: Psychology
@@ -349,9 +389,7 @@ fun AddTradeScreen(
 
             Button(
                 onClick = { 
-                    val saveEvent = TradeFormEvent.SaveTrade
-                    saveEvent.onSuccess = onNavigateBack
-                    viewModel.onEvent(saveEvent) 
+                    viewModel.onEvent(TradeFormEvent.SaveTrade(onNavigateBack))
                 },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = MaterialTheme.shapes.medium,
@@ -383,6 +421,37 @@ fun AddTradeScreen(
             
             Spacer(modifier = Modifier.height(32.dp))
         }
+    }
+
+    if (uiState.showChecklistWarning) {
+        AlertDialog(
+            onDismissRequest = { viewModel.onEvent(TradeFormEvent.DismissWarning) },
+            title = { Text("Weak Trade Plan") },
+            text = { Text("Checklist score is below 80%. This trade plan may be weak. Save anyway?") },
+            confirmButton = {
+                TextButton(onClick = { 
+                    viewModel.onEvent(TradeFormEvent.ConfirmSaveWeakPlan(onNavigateBack))
+                }) {
+                    Text("Save Anyway")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.onEvent(TradeFormEvent.DismissWarning) }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun ChecklistItem(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Checkbox(checked = checked, onCheckedChange = onCheckedChange)
+        Text(label, style = MaterialTheme.typography.bodyMedium)
     }
 }
 

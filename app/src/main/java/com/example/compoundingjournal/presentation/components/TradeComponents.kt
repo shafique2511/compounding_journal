@@ -3,8 +3,10 @@ package com.example.compoundingjournal.presentation.components
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AssignmentTurnedIn
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Rule
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -71,6 +73,30 @@ fun TradeCard(
                     )
                 }
             }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Phase 3 Indicators
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                val checklistColor = if (trade.checklistScore >= 80.0) Color(0xFF4CAF50) else Color(0xFFF44336)
+                IndicatorItem(
+                    icon = Icons.Default.AssignmentTurnedIn,
+                    text = trade.checklistStatus,
+                    color = checklistColor
+                )
+                
+                val ruleColor = when(trade.ruleFollowed.uppercase()) {
+                    "YES" -> Color(0xFF4CAF50)
+                    "NO" -> Color(0xFFF44336)
+                    else -> Color(0xFFFF9800)
+                }
+                IndicatorItem(
+                    icon = Icons.Default.Rule,
+                    text = "Rule: ${trade.ruleFollowed}",
+                    color = ruleColor
+                )
+            }
+
             Spacer(modifier = Modifier.height(12.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -135,5 +161,24 @@ fun TradeCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun IndicatorItem(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String, color: Color) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size(14.dp)
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = color,
+            fontWeight = FontWeight.Medium
+        )
     }
 }

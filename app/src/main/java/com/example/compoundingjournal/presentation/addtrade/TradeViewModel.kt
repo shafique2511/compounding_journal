@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 class TradeViewModel(
     private val tradeRepository: TradeRepository,
@@ -76,7 +77,25 @@ class TradeViewModel(
                         lessonLearned = t.lessonLearned,
                         notes = t.notes,
                         beforeScreenshotPath = t.beforeScreenshotPath,
-                        afterScreenshotPath = t.afterScreenshotPath
+                        afterScreenshotPath = t.afterScreenshotPath,
+                        checklistTrendConfirmed = t.checklistTrendConfirmed,
+                        checklistKeyLevelConfirmed = t.checklistKeyLevelConfirmed,
+                        checklistEntryReasonConfirmed = t.checklistEntryReasonConfirmed,
+                        checklistStopLossPlanned = t.checklistStopLossPlanned,
+                        checklistTakeProfitPlanned = t.checklistTakeProfitPlanned,
+                        checklistRiskAccepted = t.checklistRiskAccepted,
+                        checklistNoRevengeTrade = t.checklistNoRevengeTrade,
+                        checklistNoOverlot = t.checklistNoOverlot,
+                        checklistNewsChecked = t.checklistNewsChecked,
+                        checklistEmotionStable = t.checklistEmotionStable,
+                        ruleFollowed = t.ruleFollowed,
+                        ruleBrokenNotes = t.ruleBrokenNotes,
+                        mistakeTags = t.mistakeTags,
+                        tradeQualityScore = t.tradeQualityScore,
+                        tradeQualityGrade = t.tradeQualityGrade,
+                        reviewCompleted = t.reviewCompleted,
+                        reviewDate = t.reviewDate,
+                        reviewNotes = t.reviewNotes
                     )
                 }
                 calculateValues()
@@ -135,13 +154,74 @@ class TradeViewModel(
             is TradeFormEvent.MistakeMadeChanged -> _uiState.update { it.copy(mistakeMade = event.value) }
             is TradeFormEvent.LessonLearnedChanged -> _uiState.update { it.copy(lessonLearned = event.value) }
             is TradeFormEvent.NotesChanged -> _uiState.update { it.copy(notes = event.value) }
-            is TradeFormEvent.BeforeScreenshotPicked -> _uiState.update { it.copy(beforeScreenshotPath = event.uri) }
+            is TradeFormEvent.BeforeScreenshotPicked -> {
+                _uiState.update { it.copy(beforeScreenshotPath = event.uri) }
+                calculateValues()
+            }
             is TradeFormEvent.AfterScreenshotPicked -> _uiState.update { it.copy(afterScreenshotPath = event.uri) }
+            
+            is TradeFormEvent.ChecklistTrendChanged -> {
+                _uiState.update { it.copy(checklistTrendConfirmed = event.value) }
+                calculateValues()
+            }
+            is TradeFormEvent.ChecklistKeyLevelChanged -> {
+                _uiState.update { it.copy(checklistKeyLevelConfirmed = event.value) }
+                calculateValues()
+            }
+            is TradeFormEvent.ChecklistEntryReasonChanged -> {
+                _uiState.update { it.copy(checklistEntryReasonConfirmed = event.value) }
+                calculateValues()
+            }
+            is TradeFormEvent.ChecklistStopLossChanged -> {
+                _uiState.update { it.copy(checklistStopLossPlanned = event.value) }
+                calculateValues()
+            }
+            is TradeFormEvent.ChecklistTakeProfitChanged -> {
+                _uiState.update { it.copy(checklistTakeProfitPlanned = event.value) }
+                calculateValues()
+            }
+            is TradeFormEvent.ChecklistRiskAcceptedChanged -> {
+                _uiState.update { it.copy(checklistRiskAccepted = event.value) }
+                calculateValues()
+            }
+            is TradeFormEvent.ChecklistNoRevengeTradeChanged -> {
+                _uiState.update { it.copy(checklistNoRevengeTrade = event.value) }
+                calculateValues()
+            }
+            is TradeFormEvent.ChecklistNoOverlotChanged -> {
+                _uiState.update { it.copy(checklistNoOverlot = event.value) }
+                calculateValues()
+            }
+            is TradeFormEvent.ChecklistNewsCheckedClicked -> {
+                _uiState.update { it.copy(checklistNewsChecked = event.value) }
+                calculateValues()
+            }
+            is TradeFormEvent.ChecklistEmotionStableChanged -> {
+                _uiState.update { it.copy(checklistEmotionStable = event.value) }
+                calculateValues()
+            }
+            is TradeFormEvent.RuleFollowedChanged -> {
+                _uiState.update { it.copy(ruleFollowed = event.value) }
+                calculateValues()
+            }
+            is TradeFormEvent.RuleBrokenNotesChanged -> _uiState.update { it.copy(ruleBrokenNotes = event.value) }
+            
             TradeFormEvent.Reset -> {
                 _uiState.update { TradeFormState() }
                 initForAdd()
             }
-            is TradeFormEvent.SaveTrade -> saveTrade(event.onSuccess)
+            is TradeFormEvent.SaveTrade -> {
+                if (_uiState.value.checklistScore < 80.0) {
+                    _uiState.update { it.copy(showChecklistWarning = true) }
+                } else {
+                    saveTrade(event.onSuccess)
+                }
+            }
+            is TradeFormEvent.ConfirmSaveWeakPlan -> {
+                _uiState.update { it.copy(showChecklistWarning = false) }
+                saveTrade(event.onSuccess)
+            }
+            TradeFormEvent.DismissWarning -> _uiState.update { it.copy(showChecklistWarning = false) }
         }
     }
 
@@ -163,8 +243,30 @@ class TradeViewModel(
         
         val rr = CalculationUtils.calculateRiskRewardRatio(state.direction, entry, sl, tp)
         
-        val riskAmount = Math.abs(entry - sl) 
+        val riskAmount = abs(entry - sl) 
         val rMultiple = CalculationUtils.calculateRMultiple(net, if (riskAmount == 0.0) 1.0 else riskAmount)
+
+        val checklistItems = listOf(
+            state.checklistTrendConfirmed, state.checklistKeyLevelConfirmed,
+            state.checklistEntryReasonConfirmed, state.checklistStopLossPlanned,
+            state.checklistTakeProfitPlanned, state.checklistRiskAccepted,
+            state.checklistNoRevengeTrade, state.checklistNoOverlot,
+            state.checklistNewsChecked, state.checklistEmotionStable
+        )
+        val checkedCount = checklistItems.count { it }
+        val checklistScore = CalculationUtils.calculateChecklistScore(checkedCount, checklistItems.size)
+        val checklistStatus = CalculationUtils.calculateChecklistStatus(checklistScore)
+
+        val qScore = CalculationUtils.calculateTradeQualityScore(
+            checklistScore = checklistScore,
+            ruleFollowed = state.ruleFollowed,
+            riskRewardRatio = rr,
+            rMultiple = rMultiple,
+            mistakeTags = state.mistakeTags,
+            notes = state.notes,
+            beforeScreenshotPath = state.beforeScreenshotPath
+        )
+        val qGrade = CalculationUtils.calculateTradeQualityGrade(qScore)
 
         _uiState.update { 
             it.copy(
@@ -172,7 +274,11 @@ class TradeViewModel(
                 endingBalance = String.format("%.2f", end),
                 growthPercent = String.format("%.2f", growth),
                 riskRewardRatio = String.format("%.2f", rr),
-                rMultiple = String.format("%.2f", rMultiple)
+                rMultiple = String.format("%.2f", rMultiple),
+                checklistScore = checklistScore,
+                checklistStatus = checklistStatus,
+                tradeQualityScore = qScore,
+                tradeQualityGrade = qGrade
             )
         }
     }
@@ -203,8 +309,8 @@ class TradeViewModel(
                 stopLoss = state.stopLoss.toDoubleOrNull() ?: 0.0,
                 takeProfit = state.takeProfit.toDoubleOrNull() ?: 0.0,
                 lotSize = state.lotSize.toDoubleOrNull() ?: 0.0,
-                riskAmount = Math.abs((state.entryPrice.toDoubleOrNull() ?: 0.0) - (state.stopLoss.toDoubleOrNull() ?: 0.0)),
-                rewardAmount = Math.abs((state.takeProfit.toDoubleOrNull() ?: 0.0) - (state.entryPrice.toDoubleOrNull() ?: 0.0)),
+                riskAmount = abs((state.entryPrice.toDoubleOrNull() ?: 0.0) - (state.stopLoss.toDoubleOrNull() ?: 0.0)),
+                rewardAmount = abs((state.takeProfit.toDoubleOrNull() ?: 0.0) - (state.entryPrice.toDoubleOrNull() ?: 0.0)),
                 grossProfitLoss = state.grossProfitLoss.toDoubleOrNull() ?: 0.0,
                 commission = state.commission.toDoubleOrNull() ?: 0.0,
                 swap = state.swap.toDoubleOrNull() ?: 0.0,
@@ -226,7 +332,29 @@ class TradeViewModel(
                 beforeScreenshotPath = state.beforeScreenshotPath,
                 afterScreenshotPath = state.afterScreenshotPath,
                 createdAt = if (editingTradeId == null) DateTimeUtils.getCurrentTimestamp() else 0,
-                updatedAt = DateTimeUtils.getCurrentTimestamp()
+                updatedAt = DateTimeUtils.getCurrentTimestamp(),
+                
+                checklistTrendConfirmed = state.checklistTrendConfirmed,
+                checklistKeyLevelConfirmed = state.checklistKeyLevelConfirmed,
+                checklistEntryReasonConfirmed = state.checklistEntryReasonConfirmed,
+                checklistStopLossPlanned = state.checklistStopLossPlanned,
+                checklistTakeProfitPlanned = state.checklistTakeProfitPlanned,
+                checklistRiskAccepted = state.checklistRiskAccepted,
+                checklistNoRevengeTrade = state.checklistNoRevengeTrade,
+                checklistNoOverlot = state.checklistNoOverlot,
+                checklistNewsChecked = state.checklistNewsChecked,
+                checklistEmotionStable = state.checklistEmotionStable,
+                checklistScore = state.checklistScore,
+                checklistStatus = state.checklistStatus,
+                ruleFollowed = state.ruleFollowed,
+                ruleBrokenNotes = state.ruleBrokenNotes,
+                
+                mistakeTags = state.mistakeTags,
+                tradeQualityScore = state.tradeQualityScore,
+                tradeQualityGrade = state.tradeQualityGrade,
+                reviewCompleted = state.reviewCompleted,
+                reviewDate = state.reviewDate,
+                reviewNotes = state.reviewNotes
             )
 
             if (editingTradeId == null) {
@@ -267,8 +395,22 @@ sealed class TradeFormEvent {
     data class NotesChanged(val value: String) : TradeFormEvent()
     data class BeforeScreenshotPicked(val uri: String?) : TradeFormEvent()
     data class AfterScreenshotPicked(val uri: String?) : TradeFormEvent()
-    object SaveTrade : TradeFormEvent() {
-        var onSuccess: () -> Unit = {}
-    }
+    
+    data class ChecklistTrendChanged(val value: Boolean) : TradeFormEvent()
+    data class ChecklistKeyLevelChanged(val value: Boolean) : TradeFormEvent()
+    data class ChecklistEntryReasonChanged(val value: Boolean) : TradeFormEvent()
+    data class ChecklistStopLossChanged(val value: Boolean) : TradeFormEvent()
+    data class ChecklistTakeProfitChanged(val value: Boolean) : TradeFormEvent()
+    data class ChecklistRiskAcceptedChanged(val value: Boolean) : TradeFormEvent()
+    data class ChecklistNoRevengeTradeChanged(val value: Boolean) : TradeFormEvent()
+    data class ChecklistNoOverlotChanged(val value: Boolean) : TradeFormEvent()
+    data class ChecklistNewsCheckedClicked(val value: Boolean) : TradeFormEvent()
+    data class ChecklistEmotionStableChanged(val value: Boolean) : TradeFormEvent()
+    data class RuleFollowedChanged(val value: String) : TradeFormEvent()
+    data class RuleBrokenNotesChanged(val value: String) : TradeFormEvent()
+    
+    data class SaveTrade(val onSuccess: () -> Unit) : TradeFormEvent()
+    data class ConfirmSaveWeakPlan(val onSuccess: () -> Unit) : TradeFormEvent()
+    object DismissWarning : TradeFormEvent()
     object Reset : TradeFormEvent()
 }

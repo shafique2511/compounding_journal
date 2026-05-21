@@ -6,6 +6,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -92,6 +93,35 @@ fun TradeDetailScreen(
                     DetailItem("Time", t.time)
                 }
 
+                SectionCard("Pre-Trade Checklist") {
+                    DetailItem("Score", "${t.checklistScore.toInt()}%", isBold = true)
+                    DetailItem("Status", t.checklistStatus, valueColor = if (t.checklistScore >= 80.0) Color(0xFF4CAF50) else Color(0xFFF44336))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                    ChecklistDetailItem("Trend confirmed", t.checklistTrendConfirmed)
+                    ChecklistDetailItem("Key level confirmed", t.checklistKeyLevelConfirmed)
+                    ChecklistDetailItem("Entry reason confirmed", t.checklistEntryReasonConfirmed)
+                    ChecklistDetailItem("Stop loss planned", t.checklistStopLossPlanned)
+                    ChecklistDetailItem("Take profit planned", t.checklistTakeProfitPlanned)
+                    ChecklistDetailItem("Risk amount accepted", t.checklistRiskAccepted)
+                    ChecklistDetailItem("No revenge trade", t.checklistNoRevengeTrade)
+                    ChecklistDetailItem("No overlot", t.checklistNoOverlot)
+                    ChecklistDetailItem("News checked", t.checklistNewsChecked)
+                    ChecklistDetailItem("Emotion stable", t.checklistEmotionStable)
+                }
+
+                SectionCard("Rule Tracking") {
+                    DetailItem("Rule Followed", t.ruleFollowed, valueColor = when(t.ruleFollowed.uppercase()) {
+                        "YES" -> Color(0xFF4CAF50)
+                        "NO" -> Color(0xFFF44336)
+                        else -> Color(0xFFFF9800)
+                    })
+                    if (t.ruleBrokenNotes.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Notes on Rule Violation:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
+                        Text(t.ruleBrokenNotes, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+
                 SectionCard("Execution Details") {
                     DetailItem("Entry Price", String.format("%.5f", t.entryPrice))
                     DetailItem("Stop Loss", String.format("%.5f", t.stopLoss))
@@ -167,6 +197,24 @@ fun TradeDetailScreen(
                 onDismiss = { showDeleteDialog = false }
             )
         }
+    }
+}
+
+@Composable
+fun ChecklistDetailItem(label: String, checked: Boolean) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        val color = if (checked) Color(0xFF4CAF50) else Color(0xFFF44336)
+        Icon(
+            imageVector = if (checked) Icons.Default.Check else Icons.Default.Close,
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(label, style = MaterialTheme.typography.bodySmall)
     }
 }
 
