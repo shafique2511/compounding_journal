@@ -44,8 +44,10 @@ data class TradeFormState(
     val ruleFollowed: String = "YES",
     val ruleBrokenNotes: String = "",
     
-    // Other Phase 1/2 fields to preserve
+    // Phase 4 Mistake tags
     val mistakeTags: String = "",
+    
+    // Other Phase 1/2 fields
     val tradeQualityScore: Double = 0.0,
     val tradeQualityGrade: String = "",
     val reviewCompleted: Boolean = false,

@@ -28,7 +28,7 @@ import com.example.compoundingjournal.presentation.components.ConfirmationDialog
 import com.example.compoundingjournal.presentation.components.SectionCard
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun TradeDetailScreen(
     tradeId: Long,
@@ -109,19 +109,6 @@ fun TradeDetailScreen(
                     ChecklistDetailItem("Emotion stable", t.checklistEmotionStable)
                 }
 
-                SectionCard("Rule Tracking") {
-                    DetailItem("Rule Followed", t.ruleFollowed, valueColor = when(t.ruleFollowed.uppercase()) {
-                        "YES" -> Color(0xFF4CAF50)
-                        "NO" -> Color(0xFFF44336)
-                        else -> Color(0xFFFF9800)
-                    })
-                    if (t.ruleBrokenNotes.isNotBlank()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("Notes on Rule Violation:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
-                        Text(t.ruleBrokenNotes, style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
-
                 SectionCard("Execution Details") {
                     DetailItem("Entry Price", String.format("%.5f", t.entryPrice))
                     DetailItem("Stop Loss", String.format("%.5f", t.stopLoss))
@@ -145,6 +132,36 @@ fun TradeDetailScreen(
                     DetailItem("Growth", "${String.format("%.2f", t.growthPercent)}%")
                     DetailItem("R/R Ratio", String.format("%.2f", t.riskRewardRatio))
                     DetailItem("R Multiple", String.format("%.2f", t.rMultiple))
+                }
+
+                SectionCard("Discipline & Rules") {
+                    DetailItem("Rule Followed", t.ruleFollowed, valueColor = when(t.ruleFollowed) {
+                        "YES" -> Color(0xFF4CAF50)
+                        "NO" -> Color(0xFFF44336)
+                        else -> Color(0xFFFF9800)
+                    })
+                    if (t.ruleBrokenNotes.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Notes on Rule Violation:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
+                        Text(t.ruleBrokenNotes, style = MaterialTheme.typography.bodyMedium)
+                    }
+                    
+                    if (t.mistakeTags.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text("Mistake Tags:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            t.mistakeTags.split(",").forEach { tag ->
+                                AssistChip(
+                                    onClick = { },
+                                    label = { Text(tag) }
+                                )
+                            }
+                        }
+                    }
                 }
 
                 SectionCard("Psychology & Performance") {

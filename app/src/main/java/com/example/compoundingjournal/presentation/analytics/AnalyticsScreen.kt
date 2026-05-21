@@ -76,6 +76,34 @@ fun AnalyticsScreen() {
                 }
 
                 item {
+                    SectionCard("Mistake Analysis") {
+                        if (uiState.mistakeAnalysis.isEmpty()) {
+                            Text("No mistake tags selected in your trades.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                        } else {
+                            val topMistake = uiState.mistakeAnalysis.first()
+                            Text(
+                                text = "Most Common: ${topMistake.tag} (${topMistake.count})",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.error,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            uiState.mistakeAnalysis.forEach { stat ->
+                                ExpandableAnalyticItem(
+                                    title = stat.tag,
+                                    subtitle = "Count: ${stat.count} • Win Rate: ${String.format("%.1f", stat.winRate)}%",
+                                    mainValue = String.format("%.2f", stat.netProfit),
+                                    details = {
+                                        AnalyticsRow("Total Impact", String.format("%.2f", stat.netProfit))
+                                        AnalyticsRow("Avg Impact", String.format("%.2f", stat.netProfit / stat.count))
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                item {
                     SectionCard("Timeframe Breakdown") {
                         uiState.timeframeAnalysis.forEach { stat ->
                             ExpandableAnalyticItem(
@@ -117,18 +145,6 @@ fun AnalyticsScreen() {
                                     AnalyticsRow("Average R-Multiple", String.format("%.2f", stat.averageR))
                                 }
                             )
-                        }
-                    }
-                }
-
-                item {
-                    SectionCard("Common Mistakes") {
-                        if (uiState.commonMistakes.isEmpty()) {
-                            Text("No mistakes documented in your notes.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
-                        } else {
-                            uiState.commonMistakes.forEach { (mistake, count) ->
-                                AnalyticsRow(mistake.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }, "$count times")
-                            }
                         }
                     }
                 }

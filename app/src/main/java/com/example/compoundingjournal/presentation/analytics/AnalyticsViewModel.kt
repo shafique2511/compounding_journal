@@ -17,6 +17,7 @@ data class AnalyticsUiState(
     val strategyAnalysis: List<StrategyStat> = emptyList(),
     val monthlyAnalysis: List<MonthlyStat> = emptyList(),
     val commonMistakes: List<Pair<String, Int>> = emptyList(),
+    val mistakeAnalysis: List<MistakeTagStat> = emptyList(),
     val isLoading: Boolean = false
 )
 
@@ -76,6 +77,13 @@ data class MonthlyStat(
     val endingBalance: Double
 )
 
+data class MistakeTagStat(
+    val tag: String,
+    val count: Int,
+    val netProfit: Double,
+    val winRate: Double
+)
+
 class AnalyticsViewModel(
     private val tradeRepository: TradeRepository
 ) : ViewModel() {
@@ -97,7 +105,7 @@ class AnalyticsViewModel(
         val symbolStats = calculateSymbolStats(trades)
         val strategyStats = calculateStrategyStats(trades)
         val monthlyStats = calculateMonthlyStats(trades)
-        val mistakes = calculateMistakeStats(trades)
+        val mistakeTags = calculateMistakeTagStats(trades)
 
         return AnalyticsUiState(
             trades = trades,
@@ -107,7 +115,7 @@ class AnalyticsViewModel(
             symbolAnalysis = symbolStats,
             strategyAnalysis = strategyStats,
             monthlyAnalysis = monthlyStats,
-            commonMistakes = mistakes,
+            mistakeAnalysis = mistakeTags,
             isLoading = false
         )
     }
@@ -199,19 +207,27 @@ class AnalyticsViewModel(
         }
     }
 
-    private fun calculateMistakeStats(trades: List<TradeEntity>): List<Pair<String, Int>> {
-        val mistakes = trades.map { it.mistakeMade }.filter { it.isNotBlank() }
-        val wordCounts = mutableMapOf<String, Int>()
-        mistakes.forEach { mistake ->
-            val words = mistake.split(Regex("\\s+")).filter { it.length > 3 }
-            words.forEach { word ->
-                val cleanWord = word.lowercase().replace(Regex("[^a-z]"), "")
-                if (cleanWord.isNotBlank()) {
-                    wordCounts[cleanWord] = wordCounts.getOrDefault(cleanWord, 0) + 1
+    private fun calculateMistakeTagStats(trades: List<TradeEntity>): List<MistakeTagStat> {
+        val tagMap = mutableMapOf<String, MutableList<TradeEntity>>()
+        trades.forEach { trade ->
+            if (trade.mistakeTags.isNotBlank()) {
+                trade.mistakeTags.split(",").forEach { tag ->
+                    val cleanTag = tag.trim()
+                    if (cleanTag.isNotEmpty()) {
+                        tagMap.getOrPut(cleanTag) { mutableListOf() }.add(trade)
+                    }
                 }
             }
         }
-        return wordCounts.toList().sortedByDescending { it.second }.take(10)
+        
+        return tagMap.map { (tag, tagTrades) ->
+            MistakeTagStat(
+                tag = tag,
+                count = tagTrades.size,
+                netProfit = tagTrades.sumOf { it.netProfitLoss },
+                winRate = CalculationUtils.calculateWinRate(tagTrades)
+            )
+        }.sortedByDescending { it.count }
     }
 
     private fun <T> Iterable<T>.averageOf(selector: (T) -> Double): Double {

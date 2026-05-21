@@ -2,7 +2,19 @@ package com.example.compoundingjournal.presentation.addtrade
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -26,7 +38,7 @@ import com.example.compoundingjournal.presentation.components.*
 import com.example.compoundingjournal.presentation.journal.ScreenshotPreview
 import com.example.compoundingjournal.utils.ImageUtils
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AddTradeScreen(
     onNavigateBack: () -> Unit,
@@ -264,6 +276,38 @@ fun AddTradeScreen(
                 )
             }
 
+            // Phase 4: Mistake Tags
+            SectionCard("Mistake Analysis") {
+                val tags = listOf(
+                    "FOMO", "Revenge Trade", "Overlot", "Early Entry", "Late Entry",
+                    "Early Exit", "Late Exit", "Moved Stop Loss", "No Stop Loss",
+                    "Ignored Trend", "Ignored News", "Bad Risk Reward", "Chased Price",
+                    "Emotional Entry", "Poor Setup", "Other"
+                )
+                val selectedTags = uiState.mistakeTags.split(",").filter { it.isNotBlank() }.toSet()
+                
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    tags.forEach { tag ->
+                        FilterChip(
+                            selected = selectedTags.contains(tag),
+                            onClick = {
+                                val newTags = if (selectedTags.contains(tag)) {
+                                    selectedTags - tag
+                                } else {
+                                    selectedTags + tag
+                                }
+                                viewModel.onEvent(TradeFormEvent.MistakeTagsChanged(newTags.joinToString(",")))
+                            },
+                            label = { Text(tag) }
+                        )
+                    }
+                }
+            }
+
             // Section 4: Psychology
             SectionCard("Trade Psychology & Notes") {
                 OutlinedTextField(
@@ -398,7 +442,8 @@ fun AddTradeScreen(
                 if (uiState.isSaving) {
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(24.dp))
                 } else {
-                    Text("Save Trade Record", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    var btnText = if (tradeId == null) "Save Trade Record" else "Update Trade Record"
+                    Text(btnText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 }
             }
             

@@ -7,6 +7,7 @@ import androidx.compose.material.icons.filled.AssignmentTurnedIn
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Rule
+import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -16,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.compoundingjournal.data.entity.TradeEntity
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TradeCard(
     trade: TradeEntity,
@@ -76,7 +78,7 @@ fun TradeCard(
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            // Phase 3 Indicators
+            // Phase 3 & 4 Indicators
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 val checklistColor = if (trade.checklistScore >= 80.0) Color(0xFF4CAF50) else Color(0xFFF44336)
                 IndicatorItem(
@@ -95,6 +97,26 @@ fun TradeCard(
                     text = "Rule: ${trade.ruleFollowed}",
                     color = ruleColor
                 )
+            }
+
+            if (trade.mistakeTags.isNotBlank()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    trade.mistakeTags.split(",").take(3).forEach { tag ->
+                        SuggestionChip(
+                            onClick = { },
+                            label = { Text(tag, style = MaterialTheme.typography.labelSmall) },
+                            icon = { Icon(Icons.Default.WarningAmber, null, modifier = Modifier.size(12.dp)) }
+                        )
+                    }
+                    if (trade.mistakeTags.split(",").size > 3) {
+                        Text("...", style = MaterialTheme.typography.labelSmall, modifier = Modifier.align(Alignment.CenterVertically))
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))

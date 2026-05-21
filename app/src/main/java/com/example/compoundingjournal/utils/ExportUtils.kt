@@ -14,7 +14,7 @@ object ExportUtils {
             "Gross Profit/Loss", "Commission", "Swap", "Net Profit/Loss",
             "Withdrawal Amount", "Starting Balance", "Ending Balance", "Growth %",
             "Risk Reward Ratio", "R Multiple", "Status", "Strategy Name",
-            "Setup Type", "Emotion Before", "Emotion After", "Mistake Made",
+            "Setup Type", "Emotion Before", "Emotion After", "Mistake Tags", "Mistake Made",
             "Lesson Learned", "Notes"
         ).joinToString(",")
 
@@ -25,7 +25,7 @@ object ExportUtils {
                 t.grossProfitLoss, t.commission, t.swap, t.netProfitLoss,
                 t.withdrawalAmount, t.startingBalance, t.endingBalance, t.growthPercent,
                 t.riskRewardRatio, t.rMultiple, t.status, t.strategyName,
-                t.setupType, t.emotionBefore, t.emotionAfter, t.mistakeMade,
+                t.setupType, t.emotionBefore, t.emotionAfter, t.mistakeTags, t.mistakeMade,
                 t.lessonLearned, "\"${t.notes.replace("\"", "\"\"")}\""
             ).joinToString(",")
         }

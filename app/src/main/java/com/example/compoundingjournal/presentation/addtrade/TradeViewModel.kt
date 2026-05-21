@@ -206,6 +206,12 @@ class TradeViewModel(
             }
             is TradeFormEvent.RuleBrokenNotesChanged -> _uiState.update { it.copy(ruleBrokenNotes = event.value) }
             
+            // Phase 4
+            is TradeFormEvent.MistakeTagsChanged -> {
+                _uiState.update { it.copy(mistakeTags = event.value) }
+                calculateValues()
+            }
+            
             TradeFormEvent.Reset -> {
                 _uiState.update { TradeFormState() }
                 initForAdd()
@@ -408,6 +414,9 @@ sealed class TradeFormEvent {
     data class ChecklistEmotionStableChanged(val value: Boolean) : TradeFormEvent()
     data class RuleFollowedChanged(val value: String) : TradeFormEvent()
     data class RuleBrokenNotesChanged(val value: String) : TradeFormEvent()
+    
+    // Phase 4
+    data class MistakeTagsChanged(val value: String) : TradeFormEvent()
     
     data class SaveTrade(val onSuccess: () -> Unit) : TradeFormEvent()
     data class ConfirmSaveWeakPlan(val onSuccess: () -> Unit) : TradeFormEvent()
