@@ -1,7 +1,10 @@
 package com.example.compoundingjournal.utils
 
 import com.example.compoundingjournal.data.entity.TradeEntity
+import java.util.Calendar
 import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
 
 object CalculationUtils {
 
@@ -62,13 +65,13 @@ object CalculationUtils {
 
     fun calculateWinRate(trades: List<TradeEntity>): Double {
         if (trades.isEmpty()) return 0.0
-        val wins = trades.count { it.netProfitLoss > 0 }
+        val wins = trades.count { it.status.equals("WIN", ignoreCase = true) }
         return (wins.toDouble() / trades.size) * 100
     }
 
     fun calculateLossRate(trades: List<TradeEntity>): Double {
         if (trades.isEmpty()) return 0.0
-        val losses = trades.count { it.netProfitLoss < 0 }
+        val losses = trades.count { it.status.equals("LOSS", ignoreCase = true) }
         return (losses.toDouble() / trades.size) * 100
     }
 
@@ -84,14 +87,11 @@ object CalculationUtils {
     fun calculateMaxDrawdown(trades: List<TradeEntity>): Double {
         if (trades.isEmpty()) return 0.0
         
-        // Sort trades by timestamp to reconstruct equity curve
         val sortedTrades = trades.sortedBy { it.timestamp }
         var peak = 0.0
         var currentEquity = 0.0
         var maxDrawdown = 0.0
 
-        // We use relative equity starting from 0 to find max dip from peak
-        // Or we could use the startingBalance of the first trade
         if (sortedTrades.isNotEmpty()) {
             currentEquity = sortedTrades.first().startingBalance
             peak = currentEquity
@@ -135,7 +135,7 @@ object CalculationUtils {
         var currentStreak = 0
         
         for (trade in sortedTrades) {
-            if (trade.netProfitLoss > 0) {
+            if (trade.status.equals("WIN", ignoreCase = true)) {
                 currentStreak++
                 if (currentStreak > maxStreak) maxStreak = currentStreak
             } else {
@@ -152,7 +152,7 @@ object CalculationUtils {
         var currentStreak = 0
         
         for (trade in sortedTrades) {
-            if (trade.netProfitLoss < 0) {
+            if (trade.status.equals("LOSS", ignoreCase = true)) {
                 currentStreak++
                 if (currentStreak > maxStreak) maxStreak = currentStreak
             } else {
@@ -176,5 +176,197 @@ object CalculationUtils {
     fun calculateWorstTrade(trades: List<TradeEntity>): Double {
         if (trades.isEmpty()) return 0.0
         return trades.minOf { it.netProfitLoss }
+    }
+
+    // New Functions for Phase 2 Update
+
+    fun calculateChecklistScore(checkedCount: Int, totalCount: Int): Double {
+        if (totalCount == 0) return 0.0
+        return (checkedCount.toDouble() / totalCount) * 100
+    }
+
+    fun calculateChecklistStatus(checklistScore: Double): String {
+        return if (checklistScore >= 80.0) "Plan Passed" else "Plan Warning"
+    }
+
+    fun calculateTradeQualityScore(
+        checklistScore: Double,
+        ruleFollowed: String,
+        riskRewardRatio: Double,
+        rMultiple: Double,
+        mistakeTags: String,
+        notes: String,
+        beforeScreenshotPath: String?
+    ): Double {
+        var score = 100.0
+
+        if (checklistScore < 80.0) score -= 20.0
+        
+        when (ruleFollowed.uppercase()) {
+            "NO" -> score -= 15.0
+            "PARTIALLY" -> score -= 10.0
+        }
+
+        if (riskRewardRatio < 1.5) score -= 15.0
+        if (rMultiple < 0.0) score -= 15.0
+        if (mistakeTags.isNotBlank()) score -= 10.0
+        if (notes.isBlank()) score -= 10.0
+        if (beforeScreenshotPath == null) score -= 10.0
+
+        return max(0.0, min(100.0, score))
+    }
+
+    fun calculateTradeQualityGrade(score: Double): String {
+        return when {
+            score >= 90.0 -> "A+"
+            score >= 80.0 -> "A"
+            score >= 70.0 -> "B"
+            score >= 60.0 -> "C"
+            else -> "D"
+        }
+    }
+
+    fun calculateRuleDisciplineScore(trades: List<TradeEntity>): Double {
+        val completedTrades = trades.filter { 
+            it.status.uppercase() in listOf("WIN", "LOSS", "BREAKEVEN") 
+        }
+        if (completedTrades.isEmpty()) return 0.0
+        
+        val followedCount = completedTrades.count { it.ruleFollowed.equals("YES", ignoreCase = true) }
+        return (followedCount.toDouble() / completedTrades.size) * 100
+    }
+
+    // Risk Functions
+
+    fun calculateDailyLossUsed(trades: List<TradeEntity>, date: String, baseBalance: Double): Double {
+        if (baseBalance <= 0.0) return 0.0
+        val dailyLoss = trades.filter { it.date == date && it.netProfitLoss < 0 }
+            .sumOf { abs(it.netProfitLoss) }
+        return (dailyLoss / baseBalance) * 100
+    }
+
+    fun calculateWeeklyLossUsed(trades: List<TradeEntity>, weekOfYear: Int, year: Int, baseBalance: Double): Double {
+        if (baseBalance <= 0.0) return 0.0
+        val calendar = Calendar.getInstance()
+        val weeklyLoss = trades.filter { 
+            calendar.timeInMillis = it.timestamp
+            calendar.get(Calendar.WEEK_OF_YEAR) == weekOfYear && 
+            calendar.get(Calendar.YEAR) == year &&
+            it.netProfitLoss < 0
+        }.sumOf { abs(it.netProfitLoss) }
+        return (weeklyLoss / baseBalance) * 100
+    }
+
+    fun checkRiskPerTradeWarning(riskPercent: Double, maxAllowedPercent: Double): Boolean {
+        return riskPercent > maxAllowedPercent
+    }
+
+    fun checkDailyLossWarning(currentLossPercent: Double, maxAllowedPercent: Double): Boolean {
+        return currentLossPercent >= maxAllowedPercent
+    }
+
+    fun checkWeeklyLossWarning(currentLossPercent: Double, maxAllowedPercent: Double): Boolean {
+        return currentLossPercent >= maxAllowedPercent
+    }
+
+    fun checkMaxTradesPerDayWarning(currentTradesCount: Int, maxAllowed: Int): Boolean {
+        return currentTradesCount >= maxAllowed
+    }
+
+    fun checkLosingStreakWarning(currentLossStreak: Int, maxAllowed: Int): Boolean {
+        return currentLossStreak >= maxAllowed
+    }
+
+    fun checkMinimumRiskRewardWarning(currentRR: Double, minimumRR: Double): Boolean {
+        return currentRR < minimumRR
+    }
+
+    fun calculateRiskWarningCount(
+        dailyLossUsed: Double, maxDaily: Double,
+        weeklyLossUsed: Double, maxWeekly: Double,
+        tradesToday: Int, maxTrades: Int,
+        lossStreak: Int, maxStreak: Int
+    ): Int {
+        var count = 0
+        if (dailyLossUsed >= maxDaily) count++
+        if (weeklyLossUsed >= maxWeekly) count++
+        if (tradesToday >= maxTrades) count++
+        if (lossStreak >= maxStreak) count++
+        return count
+    }
+
+    // Chart Functions
+
+    fun calculateEquityCurve(trades: List<TradeEntity>, initialBalance: Double): List<Pair<Long, Double>> {
+        val sortedTrades = trades.sortedBy { it.timestamp }
+        var currentBalance = initialBalance
+        val points = mutableListOf<Pair<Long, Double>>()
+        
+        // Starting point
+        if (sortedTrades.isNotEmpty()) {
+            points.add(sortedTrades.first().timestamp - 1 to initialBalance)
+        }
+
+        for (trade in sortedTrades) {
+            currentBalance = trade.endingBalance
+            points.add(trade.timestamp to currentBalance)
+        }
+        return points
+    }
+
+    fun calculateDrawdownSeries(trades: List<TradeEntity>, initialBalance: Double): List<Pair<Long, Double>> {
+        val sortedTrades = trades.sortedBy { it.timestamp }
+        var peak = initialBalance
+        var currentBalance = initialBalance
+        val points = mutableListOf<Pair<Long, Double>>()
+
+        for (trade in sortedTrades) {
+            currentBalance = trade.endingBalance
+            if (currentBalance > peak) peak = currentBalance
+            
+            val drawdown = if (peak > 0) ((peak - currentBalance) / peak) * 100 else 0.0
+            points.add(trade.timestamp to drawdown)
+        }
+        return points
+    }
+
+    fun calculateCumulativeProfit(trades: List<TradeEntity>): List<Pair<Long, Double>> {
+        val sortedTrades = trades.sortedBy { it.timestamp }
+        var cumulative = 0.0
+        val points = mutableListOf<Pair<Long, Double>>()
+
+        for (trade in sortedTrades) {
+            cumulative += trade.netProfitLoss
+            points.add(trade.timestamp to cumulative)
+        }
+        return points
+    }
+
+    // Analytics Functions
+
+    fun calculateMistakeTagStats(trades: List<TradeEntity>): Map<String, Int> {
+        val stats = mutableMapOf<String, Int>()
+        trades.forEach { trade ->
+            trade.mistakeTags.split(",").filter { it.isNotBlank() }.forEach { tag ->
+                val cleanTag = tag.trim()
+                stats[cleanTag] = stats.getOrDefault(cleanTag, 0) + 1
+            }
+        }
+        return stats.toList().sortedByDescending { it.second }.toMap()
+    }
+
+    fun calculateQualityGradeStats(trades: List<TradeEntity>): Map<String, Int> {
+        return trades.groupBy { it.tradeQualityGrade }
+            .mapValues { it.value.size }
+    }
+
+    fun calculateStrategyStats(trades: List<TradeEntity>): Map<String, Double> {
+        return trades.groupBy { it.strategyName }
+            .mapValues { entry -> entry.value.sumOf { it.netProfitLoss } }
+    }
+
+    fun calculateRuleFollowedStats(trades: List<TradeEntity>): Map<String, Int> {
+        return trades.groupBy { it.ruleFollowed.uppercase() }
+            .mapValues { it.value.size }
     }
 }
