@@ -51,7 +51,7 @@ fun StrategyPlaybookScreen(
                 actions = {
                     IconButton(onClick = { viewModel.toggleFilter() }) {
                         Icon(
-                            imageVector = if (uiState.showOnlyActive) Icons.Default.FilterAlt else Icons.Default.FilterAltOff,
+                            imageVector = if (uiState.showOnlyActive) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                             contentDescription = "Toggle Filter"
                         )
                     }
@@ -66,7 +66,7 @@ fun StrategyPlaybookScreen(
     ) { padding ->
         if (uiState.strategies.isEmpty()) {
             EmptyState(
-                message = "No strategies found.\nStart by adding your trading rules.",
+                message = if (uiState.showOnlyActive) "No active strategies." else "No strategies found.",
                 icon = Icons.Default.MenuBook,
                 modifier = Modifier.padding(padding)
             )
@@ -91,7 +91,7 @@ fun StrategyPlaybookScreen(
         if (showDeleteDialog != null) {
             ConfirmationDialog(
                 title = "Delete Strategy",
-                text = "Are you sure you want to delete '${showDeleteDialog?.strategyName}'? This won't affect existing trades but will remove the playbook entry.",
+                text = "Are you sure you want to delete '${showDeleteDialog?.strategyName}'? Existing trades won't be affected.",
                 onConfirm = {
                     showDeleteDialog?.let { viewModel.deleteStrategy(it) }
                     showDeleteDialog = null
@@ -113,7 +113,10 @@ fun StrategyCard(
             .fillMaxWidth()
             .clickable { onClick() },
         shape = MaterialTheme.shapes.large,
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (strategy.isActive) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -125,7 +128,8 @@ fun StrategyCard(
                     Text(
                         text = strategy.strategyName,
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = if (strategy.isActive) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     )
                     Text(
                         text = "${strategy.marketType} • ${strategy.timeframe}",
@@ -133,28 +137,47 @@ fun StrategyCard(
                         color = MaterialTheme.colorScheme.outline
                     )
                 }
-                Switch(
-                    checked = strategy.isActive,
-                    onCheckedChange = null, // Display only in card
-                    enabled = false
-                )
+                if (!strategy.isActive) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
+                        shape = MaterialTheme.shapes.extraSmall
+                    ) {
+                        Text(
+                            text = "INACTIVE",
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                    }
+                } else {
+                    Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(20.dp))
+                }
             }
             
             if (strategy.entryRules.isNotBlank()) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "Entry: ${strategy.entryRules.take(100)}${if (strategy.entryRules.length > 100) "..." else ""}",
+                    text = strategy.entryRules,
                     style = MaterialTheme.typography.bodySmall,
-                    maxLines = 2
+                    maxLines = 2,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+            
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
             ) {
+                TextButton(onClick = onClick) {
+                    Icon(Icons.Default.Edit, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Edit")
+                }
+                Spacer(Modifier.width(8.dp))
                 IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                    Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error)
                 }
             }
         }

@@ -26,6 +26,7 @@ import com.example.compoundingjournal.data.repository.TradeRepositoryImpl
 import com.example.compoundingjournal.presentation.components.AppTopBar
 import com.example.compoundingjournal.presentation.components.ConfirmationDialog
 import com.example.compoundingjournal.presentation.components.SectionCard
+import com.example.compoundingjournal.utils.ColorUtils
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -88,7 +89,7 @@ fun TradeDetailScreen(
                     DetailItem("Symbol", t.symbol, isBold = true)
                     DetailItem("Direction", t.direction)
                     DetailItem("Timeframe", t.timeframe)
-                    DetailItem("Status", t.status, valueColor = getStatusColor(t.status))
+                    DetailItem("Status", t.status, valueColor = ColorUtils.getStatusColor(t.status))
                     DetailItem("Date", t.date)
                     DetailItem("Time", t.time)
                 }
@@ -101,10 +102,10 @@ fun TradeDetailScreen(
                     ) {
                         Column {
                             Text("Quality Score", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
-                            Text("${t.tradeQualityScore.toInt()}/100", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold, color = getGradeColor(t.tradeQualityGrade))
+                            Text("${t.tradeQualityScore.toInt()}/100", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold, color = ColorUtils.getGradeColor(t.tradeQualityGrade))
                         }
                         Surface(
-                            color = getGradeColor(t.tradeQualityGrade).copy(alpha = 0.1f),
+                            color = ColorUtils.getGradeColor(t.tradeQualityGrade).copy(alpha = 0.1f),
                             shape = MaterialTheme.shapes.medium
                         ) {
                             Text(
@@ -112,7 +113,7 @@ fun TradeDetailScreen(
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
-                                color = getGradeColor(t.tradeQualityGrade)
+                                color = ColorUtils.getGradeColor(t.tradeQualityGrade)
                             )
                         }
                     }
@@ -310,26 +311,6 @@ fun DetailItem(label: String, value: String, valueColor: Color = MaterialTheme.c
             color = valueColor, 
             fontWeight = if (isBold) FontWeight.Bold else FontWeight.Medium
         )
-    }
-}
-
-fun getStatusColor(status: String): Color {
-    return when (status.uppercase()) {
-        "WIN" -> Color(0xFF4CAF50)
-        "LOSS" -> Color(0xFFF44336)
-        "BREAKEVEN" -> Color.Gray
-        "RUNNING" -> Color(0xFF2196F3)
-        "CANCELLED" -> Color.LightGray
-        else -> Color.Black
-    }
-}
-
-fun getGradeColor(grade: String): Color {
-    return when (grade) {
-        "A+", "A" -> Color(0xFF4CAF50)
-        "B" -> Color(0xFF8BC34A)
-        "C" -> Color(0xFFFF9800)
-        else -> Color(0xFFF44336)
     }
 }
 

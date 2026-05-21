@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -22,8 +23,7 @@ import com.example.compoundingjournal.data.entity.TradeEntity
 import com.example.compoundingjournal.data.local.AppDatabase
 import com.example.compoundingjournal.data.repository.TradeRepositoryImpl
 import com.example.compoundingjournal.presentation.components.*
-import com.example.compoundingjournal.presentation.journal.getGradeColor
-import com.example.compoundingjournal.presentation.journal.getStatusColor
+import com.example.compoundingjournal.utils.ColorUtils
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -40,7 +40,7 @@ fun ReviewScreen(onTradeClick: (Long) -> Unit) {
     var tradeToReview by remember { mutableStateOf<TradeEntity?>(null) }
 
     Scaffold(
-        topBar = { AppTopBar(title = "Trade Review Mode") }
+        topBar = { AppTopBar(title = "Post-Trade Review") }
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
             ReviewFiltersRow(
@@ -50,7 +50,7 @@ fun ReviewScreen(onTradeClick: (Long) -> Unit) {
 
             if (uiState.trades.isEmpty()) {
                 EmptyState(
-                    message = "No trades match this review filter.",
+                    message = "No trades found for this review criteria.",
                     icon = Icons.Default.FactCheck
                 )
             } else {
@@ -92,9 +92,10 @@ fun ReviewFiltersRow(
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        Spacer(modifier = Modifier.width(16.dp))
         ReviewFilter.values().forEach { filter ->
             FilterChip(
                 selected = selectedFilter == filter,
@@ -103,6 +104,7 @@ fun ReviewFiltersRow(
                 shape = MaterialTheme.shapes.medium
             )
         }
+        Spacer(modifier = Modifier.width(16.dp))
     }
 }
 
@@ -113,6 +115,8 @@ fun ReviewTradeCard(
     onClick: () -> Unit,
     onReview: () -> Unit
 ) {
+    val gradeColor = ColorUtils.getGradeColor(trade.tradeQualityGrade)
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -121,13 +125,19 @@ fun ReviewTradeCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Column {
-                    Text("#${trade.tradeNumber} • ${trade.symbol}", fontWeight = FontWeight.Bold)
-                    Text("${trade.date} ${trade.time}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("#${trade.tradeNumber} • ${trade.symbol}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("${trade.date} • ${trade.status}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
                 }
                 if (trade.reviewCompleted) {
-                    Icon(Icons.Default.CheckCircle, contentDescription = "Reviewed", tint = Color(0xFF4CAF50))
+                    Surface(color = Color(0xFF4CAF50).copy(alpha = 0.1f), shape = CircleShape) {
+                        Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Reviewed", style = MaterialTheme.typography.labelSmall, color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
             }
 
@@ -135,40 +145,56 @@ fun ReviewTradeCard(
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column {
-                    Text("Net P/L", style = MaterialTheme.typography.labelSmall)
+                    Text("Result", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
                     Text(
                         text = String.format("%.2f", trade.netProfitLoss),
                         color = if (trade.netProfitLoss >= 0) Color(0xFF4CAF50) else Color(0xFFF44336),
+                        style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold
                     )
                 }
                 Column(horizontalAlignment = Alignment.End) {
-                    Text("Grade", style = MaterialTheme.typography.labelSmall)
-                    Text(trade.tradeQualityGrade, color = getGradeColor(trade.tradeQualityGrade), fontWeight = FontWeight.Bold)
+                    Text("Execution Grade", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                    Text(
+                        text = "Grade ${trade.tradeQualityGrade}", 
+                        color = gradeColor, 
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
 
             if (trade.mistakeTags.isNotBlank()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    trade.mistakeTags.split(",").forEach { tag ->
-                        SuggestionChip(onClick = {}, label = { Text(tag, fontSize = 10.sp) })
+                Spacer(modifier = Modifier.height(12.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    trade.mistakeTags.split(",").filter { it.isNotBlank() }.forEach { tag ->
+                        MistakeTagChip(tag)
                     }
                 }
             }
 
             if (trade.lessonLearned.isNotBlank()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Lesson: ${trade.lessonLearned}", style = MaterialTheme.typography.bodySmall, maxLines = 2)
+                Spacer(modifier = Modifier.height(12.dp))
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                    shape = MaterialTheme.shapes.small
+                ) {
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        Text("Lesson Learned:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                        Text(trade.lessonLearned, style = MaterialTheme.typography.bodySmall, maxLines = 2)
+                    }
+                }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = onReview,
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.medium
             ) {
-                Text(if (trade.reviewCompleted) "Edit Review" else "Start Review")
+                Icon(if (trade.reviewCompleted) Icons.Default.EditNote else Icons.Default.RateReview, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(if (trade.reviewCompleted) "Edit Review Analysis" else "Perform Post-Trade Review")
             }
         }
     }
@@ -184,22 +210,23 @@ fun ReviewDialog(
     
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Review Trade #${trade.tradeNumber}") },
+        title = { Text("Deep Review #${trade.tradeNumber}") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Analysis of ${trade.symbol} (${trade.status})", style = MaterialTheme.typography.labelMedium)
+                Text("${trade.symbol} • ${trade.direction} • ${trade.status}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.secondary)
                 OutlinedTextField(
                     value = notes,
                     onValueChange = { notes = it },
-                    label = { Text("Review Notes") },
-                    modifier = Modifier.fillMaxWidth().height(150.dp),
-                    placeholder = { Text("What did you do well? What can be improved?") }
+                    label = { Text("Performance Analysis & Feedback") },
+                    modifier = Modifier.fillMaxWidth().height(180.dp),
+                    placeholder = { Text("Why did this trade result in this outcome? Was the strategy followed perfectly? What emotional triggers were present?") },
+                    shape = MaterialTheme.shapes.medium
                 )
             }
         },
         confirmButton = {
-            TextButton(onClick = { onSave(notes) }) {
-                Text("Save Review")
+            Button(onClick = { onSave(notes) }, shape = MaterialTheme.shapes.medium) {
+                Text("Complete Review")
             }
         },
         dismissButton = {
