@@ -18,5 +18,14 @@ data class SettingsEntity(
     val defaultSwap: Double,
     val themeMode: String,
     val accentColor: String,
-    val autoTradeNumber: Boolean = true
+    val autoTradeNumber: Boolean = true,
+
+    // Risk settings
+    val maxRiskPerTradePercent: Double = 2.0,
+    val maxDailyLossPercent: Double = 5.0,
+    val maxWeeklyLossPercent: Double = 10.0,
+    val maxTradesPerDay: Int = 5,
+    val maxLosingStreakWarning: Int = 3,
+    val minimumRiskRewardRatio: Double = 1.5,
+    val enableRiskWarning: Boolean = true
 )

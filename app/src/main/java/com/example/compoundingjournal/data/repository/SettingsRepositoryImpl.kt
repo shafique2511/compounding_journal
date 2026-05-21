@@ -31,7 +31,14 @@ class SettingsRepositoryImpl(private val settingsDao: SettingsDao) : SettingsRep
                 defaultSwap = 0.0,
                 themeMode = "SYSTEM",
                 accentColor = "BLUE",
-                autoTradeNumber = true
+                autoTradeNumber = true,
+                maxRiskPerTradePercent = 2.0,
+                maxDailyLossPercent = 5.0,
+                maxWeeklyLossPercent = 10.0,
+                maxTradesPerDay = 5,
+                maxLosingStreakWarning = 3,
+                minimumRiskRewardRatio = 1.5,
+                enableRiskWarning = true
             )
             settingsDao.insertSettings(defaultSettings)
         }

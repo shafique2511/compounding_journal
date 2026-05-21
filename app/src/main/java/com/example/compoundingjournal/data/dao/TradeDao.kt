@@ -46,4 +46,16 @@ interface TradeDao {
 
     @Query("DELETE FROM trades")
     suspend fun deleteAllTrades()
+
+    @Query("SELECT * FROM trades WHERE tradeQualityGrade = :grade ORDER BY timestamp DESC")
+    fun getTradesByQualityGrade(grade: String): Flow<List<TradeEntity>>
+
+    @Query("SELECT * FROM trades WHERE ruleFollowed = :rule ORDER BY timestamp DESC")
+    fun getTradesByRuleFollowed(rule: String): Flow<List<TradeEntity>>
+
+    @Query("SELECT * FROM trades WHERE reviewCompleted = :isCompleted ORDER BY timestamp DESC")
+    fun getTradesByReviewStatus(isCompleted: Boolean): Flow<List<TradeEntity>>
+
+    @Query("SELECT * FROM trades WHERE mistakeTags LIKE '%' || :tag || '%' ORDER BY timestamp DESC")
+    fun getTradesByMistakeTag(tag: String): Flow<List<TradeEntity>>
 }

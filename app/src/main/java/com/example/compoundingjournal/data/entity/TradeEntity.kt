@@ -41,5 +41,33 @@ data class TradeEntity(
     val beforeScreenshotPath: String?,
     val afterScreenshotPath: String?,
     val createdAt: Long,
-    val updatedAt: Long
+    val updatedAt: Long,
+
+    // Checklist fields
+    val checklistTrendConfirmed: Boolean = false,
+    val checklistKeyLevelConfirmed: Boolean = false,
+    val checklistEntryReasonConfirmed: Boolean = false,
+    val checklistStopLossPlanned: Boolean = false,
+    val checklistTakeProfitPlanned: Boolean = false,
+    val checklistRiskAccepted: Boolean = false,
+    val checklistNoRevengeTrade: Boolean = false,
+    val checklistNoOverlot: Boolean = false,
+    val checklistNewsChecked: Boolean = false,
+    val checklistEmotionStable: Boolean = false,
+    val checklistScore: Double = 0.0,
+    val checklistStatus: String = "",
+
+    // Mistake / rule fields
+    val mistakeTags: String = "",
+    val ruleFollowed: String = "",
+    val ruleBrokenNotes: String = "",
+
+    // Quality score fields
+    val tradeQualityScore: Double = 0.0,
+    val tradeQualityGrade: String = "",
+
+    // Review fields
+    val reviewCompleted: Boolean = false,
+    val reviewDate: String = "",
+    val reviewNotes: String = ""
 )
