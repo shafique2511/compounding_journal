@@ -19,6 +19,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.compoundingjournal.data.local.AppDatabase
+import com.example.compoundingjournal.data.repository.SettingsRepositoryImpl
 import com.example.compoundingjournal.data.repository.TradeRepository
 import com.example.compoundingjournal.data.repository.TradeRepositoryImpl
 import com.example.compoundingjournal.presentation.components.AppTopBar
@@ -26,6 +27,7 @@ import com.example.compoundingjournal.presentation.components.EmptyState
 import com.example.compoundingjournal.presentation.components.SectionCard
 import com.example.compoundingjournal.presentation.journal.getGradeColor
 import com.example.compoundingjournal.utils.CalculationUtils
+import com.example.compoundingjournal.data.repository.SettingsRepository
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -34,8 +36,9 @@ fun AnalyticsScreen() {
     val context = LocalContext.current
     val database = remember { AppDatabase.getDatabase(context) }
     val repository = remember { TradeRepositoryImpl(database.tradeDao()) }
+    val settingsRepository = remember { SettingsRepositoryImpl(database.settingsDao()) }
     val viewModel: AnalyticsViewModel = viewModel(
-        factory = AnalyticsViewModelFactory(repository)
+        factory = AnalyticsViewModelFactory(repository, settingsRepository)
     )
 
     val uiState by viewModel.uiState.collectAsState()
@@ -65,6 +68,21 @@ fun AnalyticsScreen() {
                         AnalyticsRow("Profit Factor", String.format("%.2f", s.profitFactor))
                         AnalyticsRow("Net Profit", String.format("%.2f", s.netProfit), color = if (s.netProfit >= 0) Color(0xFF4CAF50) else Color(0xFFF44336), isBold = true)
                         AnalyticsRow("Avg Profit / Loss", "${String.format("%.2f", s.averageProfit)} / ${String.format("%.2f", s.averageLoss)}")
+                    }
+                }
+
+                item {
+                    SectionCard("Risk Rule Analysis") {
+                        val rs = uiState.riskRuleAnalysis
+                        AnalyticsRow("Trades with Warnings", rs.tradesWithWarnings.toString(), if (rs.tradesWithWarnings > 0) Color(0xFFF44336) else MaterialTheme.colorScheme.onSurface)
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                        Text("Risk-Compliant Trades:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                        AnalyticsRow("Win Rate", "${String.format("%.1f", rs.followedRulesWinRate)}%")
+                        AnalyticsRow("Net Profit", String.format("%.2f", rs.followedRulesNetProfit), color = if (rs.followedRulesNetProfit >= 0) Color(0xFF4CAF50) else Color(0xFFF44336))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Trades with Risk Violations:", style = MaterialTheme.typography.labelSmall, color = Color(0xFFF44336))
+                        AnalyticsRow("Win Rate", "${String.format("%.1f", rs.brokeRulesWinRate)}%")
+                        AnalyticsRow("Net Profit", String.format("%.2f", rs.brokeRulesNetProfit), color = if (rs.brokeRulesNetProfit >= 0) Color(0xFF4CAF50) else Color(0xFFF44336))
                     }
                 }
 
@@ -258,11 +276,14 @@ fun ExpandableAnalyticItem(
     }
 }
 
-class AnalyticsViewModelFactory(private val repository: TradeRepository) : ViewModelProvider.Factory {
+class AnalyticsViewModelFactory(
+    private val repository: TradeRepository,
+    private val settingsRepository: SettingsRepository
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(AnalyticsViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return AnalyticsViewModel(repository) as T
+            return AnalyticsViewModel(repository, settingsRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

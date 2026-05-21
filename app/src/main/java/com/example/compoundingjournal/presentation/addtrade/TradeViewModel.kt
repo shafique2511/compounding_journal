@@ -230,18 +230,90 @@ class TradeViewModel(
                 initForAdd()
             }
             is TradeFormEvent.SaveTrade -> {
-                if (_uiState.value.checklistScore < 80.0) {
-                    _uiState.update { it.copy(showChecklistWarning = true) }
-                } else {
-                    saveTrade(event.onSuccess)
+                viewModelScope.launch {
+                    val settings = settingsRepository.getSettings().first()
+                    if (settings?.enableRiskWarning == true) {
+                        val warnings = checkRiskRules(settings)
+                        if (warnings.isNotEmpty()) {
+                            _uiState.update { it.copy(riskWarningMessages = warnings, showRiskWarning = true) }
+                        } else if (_uiState.value.checklistScore < 80.0) {
+                            _uiState.update { it.copy(showChecklistWarning = true) }
+                        } else {
+                            saveTrade(event.onSuccess)
+                        }
+                    } else if (_uiState.value.checklistScore < 80.0) {
+                        _uiState.update { it.copy(showChecklistWarning = true) }
+                    } else {
+                        saveTrade(event.onSuccess)
+                    }
                 }
             }
             is TradeFormEvent.ConfirmSaveWeakPlan -> {
                 _uiState.update { it.copy(showChecklistWarning = false) }
                 saveTrade(event.onSuccess)
             }
-            TradeFormEvent.DismissWarning -> _uiState.update { it.copy(showChecklistWarning = false) }
+            is TradeFormEvent.ConfirmSaveRiskWarning -> {
+                _uiState.update { it.copy(showRiskWarning = false) }
+                if (_uiState.value.checklistScore < 80.0) {
+                    _uiState.update { it.copy(showChecklistWarning = true) }
+                } else {
+                    saveTrade(event.onSuccess)
+                }
+            }
+            TradeFormEvent.DismissWarning -> _uiState.update { it.copy(showChecklistWarning = false, showRiskWarning = false) }
         }
+    }
+
+    private suspend fun checkRiskRules(settings: com.example.compoundingjournal.data.entity.SettingsEntity): List<String> {
+        val warnings = mutableListOf<String>()
+        val state = _uiState.value
+        val trades = tradeRepository.getAllTrades().first()
+        val startBalance = state.startingBalance.toDoubleOrNull() ?: 1.0
+        val entry = state.entryPrice.toDoubleOrNull() ?: 0.0
+        val sl = state.stopLoss.toDoubleOrNull() ?: 0.0
+        val lotSize = state.lotSize.toDoubleOrNull() ?: 0.0
+        val riskAmount = abs(entry - sl) * lotSize
+
+        // Risk Per Trade %
+        val riskPercent = if (startBalance > 0) (riskAmount / startBalance) * 100 else 0.0
+        if (CalculationUtils.checkRiskPerTradeWarning(riskPercent, settings.maxRiskPerTradePercent)) {
+            warnings.add("Risk per trade (${String.format("%.2f", riskPercent)}%) is above limit (${settings.maxRiskPerTradePercent}%)")
+        }
+
+        // Minimum RR
+        val rr = state.riskRewardRatio.toDoubleOrNull() ?: 0.0
+        if (CalculationUtils.checkMinimumRiskRewardWarning(rr, settings.minimumRiskRewardRatio)) {
+            warnings.add("Risk Reward Ratio (${String.format("%.2f", rr)}) is below minimum (${settings.minimumRiskRewardRatio})")
+        }
+
+        // Max Trades Per Day
+        val tradesTodayCount = trades.count { it.date == state.date }
+        if (CalculationUtils.checkMaxTradesPerDayWarning(tradesTodayCount, settings.maxTradesPerDay)) {
+            warnings.add("Maximum trades per day (${settings.maxTradesPerDay}) reached")
+        }
+
+        // Daily Loss
+        val dailyLossUsed = CalculationUtils.calculateDailyLossUsed(trades, state.date, startBalance)
+        if (CalculationUtils.checkDailyLossWarning(dailyLossUsed, settings.maxDailyLossPercent)) {
+            warnings.add("Daily loss limit (${settings.maxDailyLossPercent}%) reached or exceeded")
+        }
+
+        // Weekly Loss
+        val calendar = java.util.Calendar.getInstance()
+        val week = calendar.get(java.util.Calendar.WEEK_OF_YEAR)
+        val year = calendar.get(java.util.Calendar.YEAR)
+        val weeklyLossUsed = CalculationUtils.calculateWeeklyLossUsed(trades, week, year, startBalance)
+        if (CalculationUtils.checkWeeklyLossWarning(weeklyLossUsed, settings.maxWeeklyLossPercent)) {
+            warnings.add("Weekly loss limit (${settings.maxWeeklyLossPercent}%) reached or exceeded")
+        }
+
+        // Losing Streak
+        val currentLossStreak = CalculationUtils.calculateCurrentLossStreak(trades)
+        if (CalculationUtils.checkLosingStreakWarning(currentLossStreak, settings.maxLosingStreakWarning)) {
+            warnings.add("Current losing streak ($currentLossStreak losses) is at or above limit (${settings.maxLosingStreakWarning})")
+        }
+
+        return warnings
     }
 
     private fun calculateValues() {
@@ -259,10 +331,12 @@ class TradeViewModel(
         val entry = state.entryPrice.toDoubleOrNull() ?: 0.0
         val sl = state.stopLoss.toDoubleOrNull() ?: 0.0
         val tp = state.takeProfit.toDoubleOrNull() ?: 0.0
+        val lotSize = state.lotSize.toDoubleOrNull() ?: 0.0
+        
+        val riskAmount = abs(entry - sl) * lotSize
+        val rewardAmount = abs(tp - entry) * lotSize
         
         val rr = CalculationUtils.calculateRiskRewardRatio(state.direction, entry, sl, tp)
-        
-        val riskAmount = abs(entry - sl) 
         val rMultiple = CalculationUtils.calculateRMultiple(net, if (riskAmount == 0.0) 1.0 else riskAmount)
 
         val checklistItems = listOf(
@@ -328,8 +402,8 @@ class TradeViewModel(
                 stopLoss = state.stopLoss.toDoubleOrNull() ?: 0.0,
                 takeProfit = state.takeProfit.toDoubleOrNull() ?: 0.0,
                 lotSize = state.lotSize.toDoubleOrNull() ?: 0.0,
-                riskAmount = abs((state.entryPrice.toDoubleOrNull() ?: 0.0) - (state.stopLoss.toDoubleOrNull() ?: 0.0)),
-                rewardAmount = abs((state.takeProfit.toDoubleOrNull() ?: 0.0) - (state.entryPrice.toDoubleOrNull() ?: 0.0)),
+                riskAmount = abs((state.entryPrice.toDoubleOrNull() ?: 0.0) - (state.stopLoss.toDoubleOrNull() ?: 0.0)) * (state.lotSize.toDoubleOrNull() ?: 0.0),
+                rewardAmount = abs((state.takeProfit.toDoubleOrNull() ?: 0.0) - (state.entryPrice.toDoubleOrNull() ?: 0.0)) * (state.lotSize.toDoubleOrNull() ?: 0.0),
                 grossProfitLoss = state.grossProfitLoss.toDoubleOrNull() ?: 0.0,
                 commission = state.commission.toDoubleOrNull() ?: 0.0,
                 swap = state.swap.toDoubleOrNull() ?: 0.0,
@@ -432,6 +506,7 @@ sealed class TradeFormEvent {
     
     data class SaveTrade(val onSuccess: () -> Unit) : TradeFormEvent()
     data class ConfirmSaveWeakPlan(val onSuccess: () -> Unit) : TradeFormEvent()
+    data class ConfirmSaveRiskWarning(val onSuccess: () -> Unit) : TradeFormEvent()
     object DismissWarning : TradeFormEvent()
     object Reset : TradeFormEvent()
 }

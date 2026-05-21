@@ -30,6 +30,7 @@ import com.example.compoundingjournal.presentation.components.AppTopBar
 import com.example.compoundingjournal.presentation.components.ChartCard
 import com.example.compoundingjournal.presentation.components.KpiCard
 import java.util.Locale
+import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
@@ -147,8 +148,12 @@ fun KpiGrid(kpis: DashboardKpis) {
         KpiItem("Win Rate", "${String.format("%.1f", kpis.winRate)}%"),
         KpiItem("Total Trades", kpis.totalTrades.toString()),
         KpiItem("Average R", String.format("%.2f", kpis.averageRMultiple)),
+        KpiItem("Quality Score", "${kpis.averageQualityScore.toInt()}/100"),
         KpiItem("Profit Factor", String.format("%.2f", kpis.profitFactor)),
         KpiItem("Max Drawdown", String.format("%.2f", kpis.maxDrawdown), Color(0xFFFF9800)),
+        KpiItem("Daily Loss %", "${String.format("%.1f", kpis.dailyLossUsed)}%"),
+        KpiItem("Weekly Loss %", "${String.format("%.1f", kpis.weeklyLossUsed)}%"),
+        KpiItem("Risk Warnings", kpis.riskWarningCount.toString(), if (kpis.riskWarningCount > 0) Color(0xFFF44336) else MaterialTheme.colorScheme.onSurface),
         KpiItem("Current Streak", kpis.currentStreak.toString())
     )
 
@@ -208,7 +213,7 @@ fun BarChart(data: List<Double>, modifier: Modifier = Modifier) {
         return
     }
 
-    val max = data.maxOf { Math.abs(it) }.coerceAtLeast(1.0)
+    val max = data.maxOf { abs(it) }.coerceAtLeast(1.0)
 
     Canvas(modifier = modifier.fillMaxSize()) {
         val width = size.width
@@ -216,7 +221,7 @@ fun BarChart(data: List<Double>, modifier: Modifier = Modifier) {
         val barWidth = width / data.size
         
         data.forEachIndexed { index, value ->
-            val barHeight = (Math.abs(value) / max * (height / 2)).toFloat()
+            val barHeight = (abs(value) / max * (height / 2)).toFloat()
             val x = index * barWidth
             val y = if (value >= 0) (height / 2) - barHeight else (height / 2)
             
@@ -239,7 +244,7 @@ fun HorizontalBarChart(data: Map<String, Double>, modifier: Modifier = Modifier)
         return
     }
 
-    val max = data.values.maxOf { Math.abs(it) }.coerceAtLeast(1.0)
+    val max = data.values.maxOf { abs(it) }.coerceAtLeast(1.0)
     val entries = data.toList()
 
     Column(modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -256,7 +261,7 @@ fun HorizontalBarChart(data: Map<String, Double>, modifier: Modifier = Modifier)
                 }
                 Spacer(Modifier.height(4.dp))
                 Box(modifier = Modifier.fillMaxWidth().height(16.dp)) {
-                    val progress = (Math.abs(value) / max).toFloat()
+                    val progress = (abs(value) / max).toFloat()
                     LinearProgressIndicator(
                         progress = progress,
                         modifier = Modifier.fillMaxSize(),

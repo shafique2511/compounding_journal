@@ -168,6 +168,22 @@ object CalculationUtils {
         return sumR / trades.size
     }
 
+    fun calculateCurrentLossStreak(trades: List<TradeEntity>): Int {
+        if (trades.isEmpty()) return 0
+        val sortedTrades = trades.sortedByDescending { it.timestamp }
+        var streak = 0
+        for (trade in sortedTrades) {
+            if (trade.status.equals("LOSS", ignoreCase = true)) {
+                streak++
+            } else if (trade.status.equals("BREAKEVEN", ignoreCase = true) || trade.status.equals("CANCELLED", ignoreCase = true) || trade.status.equals("RUNNING", ignoreCase = true)) {
+                continue
+            } else {
+                break
+            }
+        }
+        return streak
+    }
+
     fun calculateBestTrade(trades: List<TradeEntity>): Double {
         if (trades.isEmpty()) return 0.0
         return trades.maxOf { it.netProfitLoss }

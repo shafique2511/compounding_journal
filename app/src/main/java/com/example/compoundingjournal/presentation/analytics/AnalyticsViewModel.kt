@@ -3,10 +3,12 @@ package com.example.compoundingjournal.presentation.analytics
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.compoundingjournal.data.entity.TradeEntity
+import com.example.compoundingjournal.data.repository.SettingsRepository
 import com.example.compoundingjournal.data.repository.TradeRepository
 import com.example.compoundingjournal.utils.CalculationUtils
 import com.example.compoundingjournal.utils.DateTimeUtils
 import kotlinx.coroutines.flow.*
+import kotlin.math.abs
 
 data class AnalyticsUiState(
     val trades: List<TradeEntity> = emptyList(),
@@ -20,6 +22,7 @@ data class AnalyticsUiState(
     val mistakeAnalysis: List<MistakeTagStat> = emptyList(),
     val qualityAnalysis: List<QualityGradeStat> = emptyList(),
     val averageQualityScore: Double = 0.0,
+    val riskRuleAnalysis: RiskRuleAnalysis = RiskRuleAnalysis(),
     val isLoading: Boolean = false
 )
 
@@ -97,21 +100,31 @@ data class QualityGradeStat(
     val netProfit: Double
 )
 
+data class RiskRuleAnalysis(
+    val tradesWithWarnings: Int = 0,
+    val followedRulesNetProfit: Double = 0.0,
+    val followedRulesWinRate: Double = 0.0,
+    val brokeRulesNetProfit: Double = 0.0,
+    val brokeRulesWinRate: Double = 0.0
+)
+
 class AnalyticsViewModel(
-    private val tradeRepository: TradeRepository
+    private val tradeRepository: TradeRepository,
+    private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 
-    val uiState: StateFlow<AnalyticsUiState> = tradeRepository.getAllTrades()
-        .map { trades ->
-            if (trades.isEmpty()) {
-                AnalyticsUiState()
-            } else {
-                calculateAnalytics(trades)
-            }
+    val uiState: StateFlow<AnalyticsUiState> = combine(
+        tradeRepository.getAllTrades(),
+        settingsRepository.getSettings()
+    ) { trades, settings ->
+        if (trades.isEmpty()) {
+            AnalyticsUiState()
+        } else {
+            calculateAnalytics(trades, settings)
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AnalyticsUiState(isLoading = true))
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AnalyticsUiState(isLoading = true))
 
-    private fun calculateAnalytics(trades: List<TradeEntity>): AnalyticsUiState {
+    private fun calculateAnalytics(trades: List<TradeEntity>, settings: com.example.compoundingjournal.data.entity.SettingsEntity?): AnalyticsUiState {
         val summary = calculateSummary(trades)
         val risk = calculateRisk(trades)
         val timeframeStats = calculateTimeframeStats(trades)
@@ -120,6 +133,7 @@ class AnalyticsViewModel(
         val monthlyStats = calculateMonthlyStats(trades)
         val mistakeTags = calculateMistakeTagStats(trades)
         val qualityStats = calculateQualityStats(trades)
+        val riskRuleAnalysis = calculateRiskRuleAnalysis(trades, settings)
 
         return AnalyticsUiState(
             trades = trades,
@@ -132,6 +146,7 @@ class AnalyticsViewModel(
             mistakeAnalysis = mistakeTags,
             qualityAnalysis = qualityStats,
             averageQualityScore = if (trades.isNotEmpty()) trades.sumOf { it.tradeQualityScore } / trades.size else 0.0,
+            riskRuleAnalysis = riskRuleAnalysis,
             isLoading = false
         )
     }
@@ -170,6 +185,37 @@ class AnalyticsViewModel(
             bestR = trades.maxOfOrNull { it.rMultiple } ?: 0.0,
             worstR = trades.minOfOrNull { it.rMultiple } ?: 0.0,
             maxDrawdown = CalculationUtils.calculateMaxDrawdown(trades)
+        )
+    }
+
+    private fun calculateRiskRuleAnalysis(trades: List<TradeEntity>, settings: com.example.compoundingjournal.data.entity.SettingsEntity?): RiskRuleAnalysis {
+        if (settings == null) return RiskRuleAnalysis()
+        
+        val followedTrades = mutableListOf<TradeEntity>()
+        val brokeTrades = mutableListOf<TradeEntity>()
+        var warningCount = 0
+
+        // In a real app we'd track 'warningTriggered' per trade, 
+        // but since we don't have that field yet, we re-verify rules
+        trades.forEach { trade ->
+            val riskPercent = if (trade.startingBalance > 0) (trade.riskAmount / trade.startingBalance) * 100 else 0.0
+            val brokeAny = CalculationUtils.checkRiskPerTradeWarning(riskPercent, settings.maxRiskPerTradePercent) ||
+                        CalculationUtils.checkMinimumRiskRewardWarning(trade.riskRewardRatio, settings.minimumRiskRewardRatio)
+            
+            if (brokeAny) {
+                brokeTrades.add(trade)
+                warningCount++
+            } else {
+                followedTrades.add(trade)
+            }
+        }
+
+        return RiskRuleAnalysis(
+            tradesWithWarnings = warningCount,
+            followedRulesNetProfit = followedTrades.sumOf { it.netProfitLoss },
+            followedRulesWinRate = CalculationUtils.calculateWinRate(followedTrades),
+            brokeRulesNetProfit = brokeTrades.sumOf { it.netProfitLoss },
+            brokeRulesWinRate = CalculationUtils.calculateWinRate(brokeTrades)
         )
     }
 

@@ -34,7 +34,10 @@ data class DashboardKpis(
     val currentStreak: Int = 0,
     val longestWinStreak: Int = 0,
     val longestLossStreak: Int = 0,
-    val averageQualityScore: Double = 0.0
+    val averageQualityScore: Double = 0.0,
+    val dailyLossUsed: Double = 0.0,
+    val weeklyLossUsed: Double = 0.0,
+    val riskWarningCount: Int = 0
 )
 
 data class DashboardChartData(
@@ -82,7 +85,7 @@ class DashboardViewModel(
         val refreshing = args[3] as Boolean
         
         val filteredTrades = filterTrades(trades, filters)
-        val kpis = calculateKpis(filteredTrades, settings?.initialBalance ?: 1000.0)
+        val kpis = calculateKpis(filteredTrades, trades, settings)
         val chartData = prepareChartData(filteredTrades)
 
         DashboardUiState(
@@ -152,28 +155,58 @@ class DashboardViewModel(
         }
     }
 
-    private fun calculateKpis(trades: List<TradeEntity>, initialBalance: Double): DashboardKpis {
-        if (trades.isEmpty()) return DashboardKpis(currentBalance = initialBalance)
+    private fun calculateKpis(filteredTrades: List<TradeEntity>, allTrades: List<TradeEntity>, settings: com.example.compoundingjournal.data.entity.SettingsEntity?): DashboardKpis {
+        val initialBalance = settings?.initialBalance ?: 1000.0
+        if (filteredTrades.isEmpty()) return DashboardKpis(currentBalance = initialBalance)
 
-        val sortedTrades = trades.sortedBy { it.timestamp }
-        val avgScore = if (trades.isNotEmpty()) trades.sumOf { it.tradeQualityScore } / trades.size else 0.0
+        val sortedTrades = filteredTrades.sortedBy { it.timestamp }
+        val avgScore = filteredTrades.sumOf { it.tradeQualityScore } / filteredTrades.size
+
+        // Risk KPIs (Phase 7) - use all trades to check daily/weekly limits correctly
+        val today = DateTimeUtils.getCurrentDeviceDate()
+        val calendar = Calendar.getInstance()
+        val week = calendar.get(Calendar.WEEK_OF_YEAR)
+        val year = calendar.get(Calendar.YEAR)
+        
+        val baseBalance = sortedTrades.last().startingBalance
+        val dailyLossUsed = CalculationUtils.calculateDailyLossUsed(allTrades, today, baseBalance)
+        val weeklyLossUsed = CalculationUtils.calculateWeeklyLossUsed(allTrades, week, year, baseBalance)
+        
+        val tradesTodayCount = allTrades.count { it.date == today }
+        val currentLossStreak = CalculationUtils.calculateLongestLossStreak(allTrades) // Simplified
+
+        val riskWarningCount = if (settings != null) {
+            CalculationUtils.calculateRiskWarningCount(
+                dailyLossUsed = dailyLossUsed,
+                maxDaily = settings.maxDailyLossPercent,
+                weeklyLossUsed = weeklyLossUsed,
+                maxWeekly = settings.maxWeeklyLossPercent,
+                tradesToday = tradesTodayCount,
+                maxTrades = settings.maxTradesPerDay,
+                lossStreak = currentLossStreak,
+                maxStreak = settings.maxLosingStreakWarning
+            )
+        } else 0
         
         return DashboardKpis(
             currentBalance = sortedTrades.last().endingBalance,
-            totalNetProfit = trades.sumOf { it.netProfitLoss },
-            totalWithdrawals = trades.sumOf { it.withdrawalAmount },
-            totalTrades = trades.size,
-            winRate = CalculationUtils.calculateWinRate(trades),
-            lossRate = CalculationUtils.calculateLossRate(trades),
-            averageRMultiple = CalculationUtils.calculateAverageRMultiple(trades),
-            bestTrade = CalculationUtils.calculateBestTrade(trades),
-            worstTrade = CalculationUtils.calculateWorstTrade(trades),
-            profitFactor = CalculationUtils.calculateProfitFactor(trades),
-            maxDrawdown = CalculationUtils.calculateMaxDrawdown(trades),
-            currentStreak = CalculationUtils.calculateCurrentStreak(trades),
-            longestWinStreak = CalculationUtils.calculateLongestWinStreak(trades),
-            longestLossStreak = CalculationUtils.calculateLongestLossStreak(trades),
-            averageQualityScore = avgScore
+            totalNetProfit = filteredTrades.sumOf { it.netProfitLoss },
+            totalWithdrawals = filteredTrades.sumOf { it.withdrawalAmount },
+            totalTrades = filteredTrades.size,
+            winRate = CalculationUtils.calculateWinRate(filteredTrades),
+            lossRate = CalculationUtils.calculateLossRate(filteredTrades),
+            averageRMultiple = CalculationUtils.calculateAverageRMultiple(filteredTrades),
+            bestTrade = CalculationUtils.calculateBestTrade(filteredTrades),
+            worstTrade = CalculationUtils.calculateWorstTrade(filteredTrades),
+            profitFactor = CalculationUtils.calculateProfitFactor(filteredTrades),
+            maxDrawdown = CalculationUtils.calculateMaxDrawdown(filteredTrades),
+            currentStreak = CalculationUtils.calculateCurrentStreak(filteredTrades),
+            longestWinStreak = CalculationUtils.calculateLongestWinStreak(filteredTrades),
+            longestLossStreak = CalculationUtils.calculateLongestLossStreak(filteredTrades),
+            averageQualityScore = avgScore,
+            dailyLossUsed = dailyLossUsed,
+            weeklyLossUsed = weeklyLossUsed,
+            riskWarningCount = riskWarningCount
         )
     }
 

@@ -54,6 +54,15 @@ fun SettingsScreen(
     var defaultSwap by remember { mutableStateOf("0.0") }
     var themeMode by remember { mutableStateOf("SYSTEM") }
     var accentColor by remember { mutableStateOf("BLUE") }
+    
+    // Phase 7 Risk settings state
+    var maxRiskPerTrade by remember { mutableStateOf("") }
+    var maxDailyLoss by remember { mutableStateOf("") }
+    var maxWeeklyLoss by remember { mutableStateOf("") }
+    var maxTradesPerDay by remember { mutableStateOf("") }
+    var maxLossStreak by remember { mutableStateOf("") }
+    var minRR by remember { mutableStateOf("") }
+    var enableRiskWarning by remember { mutableStateOf(true) }
 
     LaunchedEffect(uiState.settings) {
         uiState.settings?.let { s ->
@@ -69,6 +78,15 @@ fun SettingsScreen(
             defaultSwap = s.defaultSwap.toString()
             themeMode = s.themeMode
             accentColor = s.accentColor
+            
+            // Phase 7
+            maxRiskPerTrade = s.maxRiskPerTradePercent.toString()
+            maxDailyLoss = s.maxDailyLossPercent.toString()
+            maxWeeklyLoss = s.maxWeeklyLossPercent.toString()
+            maxTradesPerDay = s.maxTradesPerDay.toString()
+            maxLossStreak = s.maxLosingStreakWarning.toString()
+            minRR = s.minimumRiskRewardRatio.toString()
+            enableRiskWarning = s.enableRiskWarning
         }
     }
 
@@ -99,7 +117,15 @@ fun SettingsScreen(
                                     defaultCommission = defaultCommission.toDoubleOrNull() ?: current.defaultCommission,
                                     defaultSwap = defaultSwap.toDoubleOrNull() ?: current.defaultSwap,
                                     themeMode = themeMode,
-                                    accentColor = accentColor
+                                    accentColor = accentColor,
+                                    // Phase 7
+                                    maxRiskPerTradePercent = maxRiskPerTrade.toDoubleOrNull() ?: current.maxRiskPerTradePercent,
+                                    maxDailyLossPercent = maxDailyLoss.toDoubleOrNull() ?: current.maxDailyLossPercent,
+                                    maxWeeklyLossPercent = maxWeeklyLoss.toDoubleOrNull() ?: current.maxWeeklyLossPercent,
+                                    maxTradesPerDay = maxTradesPerDay.toIntOrNull() ?: current.maxTradesPerDay,
+                                    maxLosingStreakWarning = maxLossStreak.toIntOrNull() ?: current.maxLosingStreakWarning,
+                                    minimumRiskRewardRatio = minRR.toDoubleOrNull() ?: current.minimumRiskRewardRatio,
+                                    enableRiskWarning = enableRiskWarning
                                 )
                                 viewModel.updateSettings(updated)
                             }
@@ -144,6 +170,65 @@ fun SettingsScreen(
                         selectedOption = currency,
                         onOptionSelected = { currency = it }
                     )
+                }
+
+                SectionCard("Risk Management Rules") {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Enable Risk Warnings", style = MaterialTheme.typography.bodyMedium)
+                        Switch(checked = enableRiskWarning, onCheckedChange = { enableRiskWarning = it })
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        NumberInputField(
+                            value = maxRiskPerTrade,
+                            onValueChange = { maxRiskPerTrade = it },
+                            label = "Max Risk/Trade %",
+                            modifier = Modifier.weight(1f)
+                        )
+                        NumberInputField(
+                            value = minRR,
+                            onValueChange = { minRR = it },
+                            label = "Min R:R Ratio",
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        NumberInputField(
+                            value = maxDailyLoss,
+                            onValueChange = { maxDailyLoss = it },
+                            label = "Max Daily Loss %",
+                            modifier = Modifier.weight(1f)
+                        )
+                        NumberInputField(
+                            value = maxWeeklyLoss,
+                            onValueChange = { maxWeeklyLoss = it },
+                            label = "Max Weekly Loss %",
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        NumberInputField(
+                            value = maxTradesPerDay,
+                            onValueChange = { maxTradesPerDay = it },
+                            label = "Max Trades/Day",
+                            modifier = Modifier.weight(1f),
+                            isDecimal = false
+                        )
+                        NumberInputField(
+                            value = maxLossStreak,
+                            onValueChange = { maxLossStreak = it },
+                            label = "Losing Streak Limit",
+                            modifier = Modifier.weight(1f),
+                            isDecimal = false
+                        )
+                    }
                 }
 
                 SectionCard("Regional & Format") {

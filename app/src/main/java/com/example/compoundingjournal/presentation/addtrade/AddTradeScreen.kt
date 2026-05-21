@@ -462,6 +462,35 @@ fun AddTradeScreen(
         }
     }
 
+    if (uiState.showRiskWarning) {
+        AlertDialog(
+            onDismissRequest = { viewModel.onEvent(TradeFormEvent.DismissWarning) },
+            title = { Text("Risk Warning") },
+            text = { 
+                Column {
+                    Text("Risk violations detected:", fontWeight = FontWeight.Bold)
+                    uiState.riskWarningMessages.forEach { msg ->
+                        Text("• $msg", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Save trade anyway?")
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { 
+                    viewModel.onEvent(TradeFormEvent.ConfirmSaveRiskWarning { onNavigateBack() })
+                }) {
+                    Text("Save Anyway")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.onEvent(TradeFormEvent.DismissWarning) }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     if (uiState.showChecklistWarning) {
         AlertDialog(
             onDismissRequest = { viewModel.onEvent(TradeFormEvent.DismissWarning) },

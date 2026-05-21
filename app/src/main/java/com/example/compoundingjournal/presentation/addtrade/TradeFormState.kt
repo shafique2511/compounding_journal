@@ -63,5 +63,9 @@ data class TradeFormState(
     
     val isSaving: Boolean = false,
     val errorMessage: String? = null,
-    val showChecklistWarning: Boolean = false
+    val showChecklistWarning: Boolean = false,
+    
+    // Phase 7 Risk Warnings
+    val showRiskWarning: Boolean = false,
+    val riskWarningMessages: List<String> = emptyList()
 )
