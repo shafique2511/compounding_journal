@@ -10,6 +10,7 @@ import com.example.compoundingjournal.utils.DateTimeUtils
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.*
+import kotlin.math.floor
 
 data class DashboardUiState(
     val kpis: DashboardKpis = DashboardKpis(),
@@ -41,14 +42,17 @@ data class DashboardKpis(
 )
 
 data class DashboardChartData(
-    val balanceGrowth: List<Pair<Long, Double>> = emptyList(),
+    val equityCurve: List<Double> = emptyList(),
+    val drawdownSeries: List<Double> = emptyList(),
+    val cumulativeProfit: List<Double> = emptyList(),
     val profitLossHistory: List<Double> = emptyList(),
     val winLossCount: Map<String, Int> = emptyMap(),
     val timeframePerformance: Map<String, Double> = emptyMap(),
     val symbolPerformance: Map<String, Double> = emptyMap(),
     val strategyPerformance: Map<String, Double> = emptyMap(),
     val monthlyProfit: Map<String, Double> = emptyMap(),
-    val rMultipleDistribution: Map<String, Int> = emptyMap()
+    val rMultipleDistribution: Map<String, Int> = emptyMap(),
+    val withdrawalHistory: List<Double> = emptyList()
 )
 
 data class DashboardFilters(
@@ -86,7 +90,7 @@ class DashboardViewModel(
         
         val filteredTrades = filterTrades(trades, filters)
         val kpis = calculateKpis(filteredTrades, trades, settings)
-        val chartData = prepareChartData(filteredTrades)
+        val chartData = prepareChartData(filteredTrades, settings?.initialBalance ?: 1000.0)
 
         DashboardUiState(
             kpis = kpis,
@@ -162,7 +166,6 @@ class DashboardViewModel(
         val sortedTrades = filteredTrades.sortedBy { it.timestamp }
         val avgScore = filteredTrades.sumOf { it.tradeQualityScore } / filteredTrades.size
 
-        // Risk KPIs (Phase 7) - use all trades to check daily/weekly limits correctly
         val today = DateTimeUtils.getCurrentDeviceDate()
         val calendar = Calendar.getInstance()
         val week = calendar.get(Calendar.WEEK_OF_YEAR)
@@ -173,7 +176,7 @@ class DashboardViewModel(
         val weeklyLossUsed = CalculationUtils.calculateWeeklyLossUsed(allTrades, week, year, baseBalance)
         
         val tradesTodayCount = allTrades.count { it.date == today }
-        val currentLossStreak = CalculationUtils.calculateLongestLossStreak(allTrades) // Simplified
+        val currentLossStreak = CalculationUtils.calculateCurrentLossStreak(allTrades)
 
         val riskWarningCount = if (settings != null) {
             CalculationUtils.calculateRiskWarningCount(
@@ -210,10 +213,15 @@ class DashboardViewModel(
         )
     }
 
-    private fun prepareChartData(trades: List<TradeEntity>): DashboardChartData {
+    private fun prepareChartData(trades: List<TradeEntity>, initialBalance: Double): DashboardChartData {
         if (trades.isEmpty()) return DashboardChartData()
 
         val sortedByTime = trades.sortedBy { it.timestamp }
+        
+        // Series Data
+        val equityCurve = CalculationUtils.calculateEquityCurve(trades, initialBalance).map { it.second }
+        val drawdownSeries = CalculationUtils.calculateDrawdownSeries(trades, initialBalance).map { it.second }
+        val cumulativeProfit = CalculationUtils.calculateCumulativeProfit(trades).map { it.second }
         
         val winCount = trades.count { it.status.uppercase() == "WIN" }
         val lossCount = trades.count { it.status.uppercase() == "LOSS" }
@@ -231,14 +239,28 @@ class DashboardViewModel(
         val monthlyPerf = trades.groupBy { DateTimeUtils.formatDate(it.timestamp, "MMM yyyy") }
             .mapValues { entry -> entry.value.sumOf { it.netProfitLoss } }
 
+        // R Multiple Distribution
+        val rBuckets = mutableMapOf<String, Int>()
+        trades.forEach {
+            val bucket = floor(it.rMultiple).toInt()
+            val label = "${bucket}R to ${bucket + 1}R"
+            rBuckets[label] = rBuckets.getOrDefault(label, 0) + 1
+        }
+
+        val withdrawals = sortedByTime.filter { it.withdrawalAmount > 0 }.map { it.withdrawalAmount }
+
         return DashboardChartData(
-            balanceGrowth = sortedByTime.map { it.timestamp to it.endingBalance },
+            equityCurve = equityCurve,
+            drawdownSeries = drawdownSeries,
+            cumulativeProfit = cumulativeProfit,
             profitLossHistory = sortedByTime.map { it.netProfitLoss },
             winLossCount = mapOf("Win" to winCount, "Loss" to lossCount, "BE" to beCount),
             strategyPerformance = stratPerf,
             timeframePerformance = tfPerf,
             symbolPerformance = symPerf,
-            monthlyProfit = monthlyPerf
+            monthlyProfit = monthlyPerf,
+            rMultipleDistribution = rBuckets.toSortedMap(),
+            withdrawalHistory = withdrawals
         )
     }
 }
