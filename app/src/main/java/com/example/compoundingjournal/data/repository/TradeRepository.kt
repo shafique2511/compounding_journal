@@ -16,4 +16,5 @@ interface TradeRepository {
     fun getTradesByStrategy(strategy: String): Flow<List<TradeEntity>>
     suspend fun getLastTrade(): TradeEntity?
     suspend fun deleteAllTrades()
+    suspend fun recalculateSubsequentTrades()
 }

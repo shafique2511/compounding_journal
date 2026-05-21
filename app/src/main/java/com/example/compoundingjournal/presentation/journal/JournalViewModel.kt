@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.compoundingjournal.data.entity.TradeEntity
 import com.example.compoundingjournal.data.repository.TradeRepository
-import com.example.compoundingjournal.utils.CalculationUtils
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -106,26 +105,6 @@ class JournalViewModel(
     fun deleteTrade(trade: TradeEntity) {
         viewModelScope.launch {
             tradeRepository.deleteTrade(trade)
-            recalculateSubsequentTrades()
-        }
-    }
-
-    private suspend fun recalculateSubsequentTrades() {
-        val allTrades = tradeRepository.getAllTrades().first().sortedBy { it.tradeNumber }
-        var currentBalance: Double? = null
-        
-        for (trade in allTrades) {
-            if (currentBalance != null) {
-                val updatedTrade = trade.copy(
-                    startingBalance = currentBalance,
-                    endingBalance = CalculationUtils.calculateEndingBalance(currentBalance, trade.netProfitLoss, trade.withdrawalAmount),
-                    growthPercent = CalculationUtils.calculateGrowthPercent(trade.netProfitLoss, currentBalance)
-                )
-                tradeRepository.updateTrade(updatedTrade)
-                currentBalance = updatedTrade.endingBalance
-            } else {
-                currentBalance = trade.endingBalance
-            }
         }
     }
 }

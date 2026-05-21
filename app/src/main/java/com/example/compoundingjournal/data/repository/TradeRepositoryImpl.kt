@@ -2,7 +2,9 @@ package com.example.compoundingjournal.data.repository
 
 import com.example.compoundingjournal.data.dao.TradeDao
 import com.example.compoundingjournal.data.entity.TradeEntity
+import com.example.compoundingjournal.utils.CalculationUtils
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 
 class TradeRepositoryImpl(private val tradeDao: TradeDao) : TradeRepository {
     override fun getAllTrades(): Flow<List<TradeEntity>> = tradeDao.getAllTrades()
@@ -19,6 +21,7 @@ class TradeRepositoryImpl(private val tradeDao: TradeDao) : TradeRepository {
 
     override suspend fun deleteTrade(trade: TradeEntity) {
         tradeDao.deleteTrade(trade)
+        recalculateSubsequentTrades()
     }
 
     override fun getTradesByDateRange(startTime: Long, endTime: Long): Flow<List<TradeEntity>> =
@@ -40,5 +43,25 @@ class TradeRepositoryImpl(private val tradeDao: TradeDao) : TradeRepository {
 
     override suspend fun deleteAllTrades() {
         tradeDao.deleteAllTrades()
+    }
+
+    override suspend fun recalculateSubsequentTrades() {
+        val allTrades = tradeDao.getAllTrades().first().sortedBy { it.tradeNumber }
+        var currentBalance: Double? = null
+        
+        for (trade in allTrades) {
+            if (currentBalance != null) {
+                val updatedTrade = trade.copy(
+                    startingBalance = currentBalance,
+                    endingBalance = CalculationUtils.calculateEndingBalance(currentBalance, trade.netProfitLoss, trade.withdrawalAmount),
+                    growthPercent = CalculationUtils.calculateGrowthPercent(trade.netProfitLoss, currentBalance),
+                    updatedAt = System.currentTimeMillis()
+                )
+                tradeDao.updateTrade(updatedTrade)
+                currentBalance = updatedTrade.endingBalance
+            } else {
+                currentBalance = trade.endingBalance
+            }
+        }
     }
 }

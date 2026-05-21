@@ -163,10 +163,7 @@ class TradeViewModel(
         
         val rr = CalculationUtils.calculateRiskRewardRatio(state.direction, entry, sl, tp)
         
-        // Risk amount for R Multiple calculation (Risk = |Entry - SL| * LotSize (simplification))
-        // Actually, user should probably enter riskAmount if it's complex, but let's assume riskAmount is needed
-        // For now let's just use 1.0 as placeholder or calc it
-        val riskAmount = Math.abs(entry - sl) // simplified
+        val riskAmount = Math.abs(entry - sl) 
         val rMultiple = CalculationUtils.calculateRMultiple(net, if (riskAmount == 0.0) 1.0 else riskAmount)
 
         _uiState.update { 
@@ -191,14 +188,14 @@ class TradeViewModel(
             _uiState.update { it.copy(isSaving = true) }
             
             val lastTrade = tradeRepository.getLastTrade()
-            val tradeNumber = if (editingTradeId == null) (lastTrade?.tradeNumber ?: 0) + 1 else 0 // Handled differently for edit
+            val tradeNumber = if (editingTradeId == null) (lastTrade?.tradeNumber ?: 0) + 1 else 0 
 
             val trade = TradeEntity(
                 id = editingTradeId ?: 0,
                 tradeNumber = if (editingTradeId == null) tradeNumber else tradeRepository.getTradeById(editingTradeId!!)?.tradeNumber ?: 1,
                 date = state.date,
                 time = state.time,
-                timestamp = DateTimeUtils.getCurrentTimestamp(), // Or parse from state.date/time
+                timestamp = DateTimeUtils.getCurrentTimestamp(),
                 symbol = state.symbol,
                 direction = state.direction,
                 timeframe = state.timeframe,
@@ -228,7 +225,7 @@ class TradeViewModel(
                 notes = state.notes,
                 beforeScreenshotPath = state.beforeScreenshotPath,
                 afterScreenshotPath = state.afterScreenshotPath,
-                createdAt = if (editingTradeId == null) DateTimeUtils.getCurrentTimestamp() else 0, // Should preserve original
+                createdAt = if (editingTradeId == null) DateTimeUtils.getCurrentTimestamp() else 0,
                 updatedAt = DateTimeUtils.getCurrentTimestamp()
             )
 
@@ -236,31 +233,11 @@ class TradeViewModel(
                 tradeRepository.insertTrade(trade)
             } else {
                 tradeRepository.updateTrade(trade)
-                recalculateSubsequentTrades()
+                tradeRepository.recalculateSubsequentTrades()
             }
             
             _uiState.update { it.copy(isSaving = false) }
             onSuccess()
-        }
-    }
-
-    private suspend fun recalculateSubsequentTrades() {
-        val allTrades = tradeRepository.getAllTrades().first().sortedBy { it.tradeNumber }
-        var currentBalance: Double? = null
-        
-        for (trade in allTrades) {
-            if (currentBalance != null) {
-                val updatedTrade = trade.copy(
-                    startingBalance = currentBalance,
-                    endingBalance = CalculationUtils.calculateEndingBalance(currentBalance, trade.netProfitLoss, trade.withdrawalAmount),
-                    growthPercent = CalculationUtils.calculateGrowthPercent(trade.netProfitLoss, currentBalance)
-                )
-                tradeRepository.updateTrade(updatedTrade)
-                currentBalance = updatedTrade.endingBalance
-            } else {
-                // Find the first trade or the one we just edited to start from
-                currentBalance = trade.endingBalance
-            }
         }
     }
 }
