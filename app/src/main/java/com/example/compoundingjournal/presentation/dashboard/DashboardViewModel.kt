@@ -33,7 +33,8 @@ data class DashboardKpis(
     val maxDrawdown: Double = 0.0,
     val currentStreak: Int = 0,
     val longestWinStreak: Int = 0,
-    val longestLossStreak: Int = 0
+    val longestLossStreak: Int = 0,
+    val averageQualityScore: Double = 0.0
 )
 
 data class DashboardChartData(
@@ -74,7 +75,11 @@ class DashboardViewModel(
         settingsRepository.getSettings(),
         _filters,
         _isRefreshing
-    ) { trades, settings, filters, refreshing ->
+    ) { args ->
+        val trades = args[0] as List<TradeEntity>
+        val settings = args[1] as com.example.compoundingjournal.data.entity.SettingsEntity?
+        val filters = args[2] as DashboardFilters
+        val refreshing = args[3] as Boolean
         
         val filteredTrades = filterTrades(trades, filters)
         val kpis = calculateKpis(filteredTrades, settings?.initialBalance ?: 1000.0)
@@ -103,7 +108,6 @@ class DashboardViewModel(
     fun refresh() {
         viewModelScope.launch {
             _isRefreshing.value = true
-            // In a local app, "refresh" might just be a small delay to show UI feedback
             kotlinx.coroutines.delay(500)
             _isRefreshing.value = false
         }
@@ -152,6 +156,7 @@ class DashboardViewModel(
         if (trades.isEmpty()) return DashboardKpis(currentBalance = initialBalance)
 
         val sortedTrades = trades.sortedBy { it.timestamp }
+        val avgScore = if (trades.isNotEmpty()) trades.sumOf { it.tradeQualityScore } / trades.size else 0.0
         
         return DashboardKpis(
             currentBalance = sortedTrades.last().endingBalance,
@@ -167,7 +172,8 @@ class DashboardViewModel(
             maxDrawdown = CalculationUtils.calculateMaxDrawdown(trades),
             currentStreak = CalculationUtils.calculateCurrentStreak(trades),
             longestWinStreak = CalculationUtils.calculateLongestWinStreak(trades),
-            longestLossStreak = CalculationUtils.calculateLongestLossStreak(trades)
+            longestLossStreak = CalculationUtils.calculateLongestLossStreak(trades),
+            averageQualityScore = avgScore
         )
     }
 
@@ -176,24 +182,19 @@ class DashboardViewModel(
 
         val sortedByTime = trades.sortedBy { it.timestamp }
         
-        // Win/Loss Count
         val winCount = trades.count { it.status.uppercase() == "WIN" }
         val lossCount = trades.count { it.status.uppercase() == "LOSS" }
         val beCount = trades.count { it.status.uppercase() == "BREAKEVEN" }
 
-        // Strategy Performance
         val stratPerf = trades.groupBy { it.strategyName }
             .mapValues { entry -> entry.value.sumOf { it.netProfitLoss } }
 
-        // Timeframe Performance
         val tfPerf = trades.groupBy { it.timeframe }
             .mapValues { entry -> entry.value.sumOf { it.netProfitLoss } }
 
-        // Symbol Performance
         val symPerf = trades.groupBy { it.symbol }
             .mapValues { entry -> entry.value.sumOf { it.netProfitLoss } }
 
-        // Monthly Profit
         val monthlyPerf = trades.groupBy { DateTimeUtils.formatDate(it.timestamp, "MMM yyyy") }
             .mapValues { entry -> entry.value.sumOf { it.netProfitLoss } }
 

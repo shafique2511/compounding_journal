@@ -7,6 +7,7 @@ import androidx.compose.material.icons.filled.AssignmentTurnedIn
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Rule
+import androidx.compose.material.icons.filled.Stars
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -32,6 +33,13 @@ fun TradeCard(
         "RUNNING" -> Color(0xFF2196F3)
         "CANCELLED" -> Color.LightGray
         else -> Color.Black
+    }
+
+    val gradeColor = when (trade.tradeQualityGrade) {
+        "A+", "A" -> Color(0xFF4CAF50)
+        "B" -> Color(0xFF8BC34A)
+        "C" -> Color(0xFFFF9800)
+        else -> Color(0xFFF44336)
     }
 
     val pnlColor = if (trade.netProfitLoss >= 0) Color(0xFF4CAF50) else Color(0xFFF44336)
@@ -62,28 +70,40 @@ fun TradeCard(
                         fontWeight = FontWeight.Bold
                     )
                 }
-                Surface(
-                    color = statusColor.copy(alpha = 0.1f),
-                    shape = MaterialTheme.shapes.extraSmall
-                ) {
-                    Text(
-                        text = trade.status,
-                        color = statusColor,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                Column(horizontalAlignment = Alignment.End) {
+                    Surface(
+                        color = statusColor.copy(alpha = 0.1f),
+                        shape = MaterialTheme.shapes.extraSmall
+                    ) {
+                        Text(
+                            text = trade.status,
+                            color = statusColor,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Stars, null, modifier = Modifier.size(14.dp), tint = gradeColor)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Grade ${trade.tradeQualityGrade}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = gradeColor,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            // Phase 3 & 4 Indicators
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 val checklistColor = if (trade.checklistScore >= 80.0) Color(0xFF4CAF50) else Color(0xFFF44336)
                 IndicatorItem(
                     icon = Icons.Default.AssignmentTurnedIn,
-                    text = trade.checklistStatus,
+                    text = "${trade.checklistScore.toInt()}%",
                     color = checklistColor
                 )
                 
@@ -94,8 +114,14 @@ fun TradeCard(
                 }
                 IndicatorItem(
                     icon = Icons.Default.Rule,
-                    text = "Rule: ${trade.ruleFollowed}",
+                    text = trade.ruleFollowed,
                     color = ruleColor
+                )
+                
+                IndicatorItem(
+                    icon = Icons.Default.Stars,
+                    text = "Score: ${trade.tradeQualityScore.toInt()}",
+                    color = gradeColor
                 )
             }
 

@@ -93,6 +93,44 @@ fun TradeDetailScreen(
                     DetailItem("Time", t.time)
                 }
 
+                SectionCard("Trade Quality Analysis") {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("Quality Score", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
+                            Text("${t.tradeQualityScore.toInt()}/100", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold, color = getGradeColor(t.tradeQualityGrade))
+                        }
+                        Surface(
+                            color = getGradeColor(t.tradeQualityGrade).copy(alpha = 0.1f),
+                            shape = MaterialTheme.shapes.medium
+                        ) {
+                            Text(
+                                text = "Grade ${t.tradeQualityGrade}",
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = getGradeColor(t.tradeQualityGrade)
+                            )
+                        }
+                    }
+                    
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                    
+                    Text("Score Impact Factors:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    ImpactItem("Plan Readiness (Checklist)", t.checklistScore >= 80, "-20 if < 80%")
+                    ImpactItem("Execution Discipline (Rules)", t.ruleFollowed == "YES", "-15 if NO, -10 if Partially")
+                    ImpactItem("Structure (Risk/Reward)", t.riskRewardRatio >= 1.5, "-15 if < 1.5")
+                    ImpactItem("Outcome Efficiency (R-Multi)", t.netProfitLoss >= 0, "-15 if Negative")
+                    ImpactItem("Cleanliness (No Mistakes)", t.mistakeTags.isEmpty(), "-10 if mistakes tagged")
+                    ImpactItem("Documentation (Journal Notes)", t.notes.isNotEmpty(), "-10 if empty")
+                    ImpactItem("Visuals (Before Screenshot)", t.beforeScreenshotPath != null, "-10 if missing")
+                }
+
                 SectionCard("Pre-Trade Checklist") {
                     DetailItem("Score", "${t.checklistScore.toInt()}%", isBold = true)
                     DetailItem("Status", t.checklistStatus, valueColor = if (t.checklistScore >= 80.0) Color(0xFF4CAF50) else Color(0xFFF44336))
@@ -218,6 +256,29 @@ fun TradeDetailScreen(
 }
 
 @Composable
+fun ImpactItem(label: String, passed: Boolean, penaltyText: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = if (passed) Icons.Default.Check else Icons.Default.Close,
+                contentDescription = null,
+                tint = if (passed) Color(0xFF4CAF50) else Color(0xFFF44336),
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(label, style = MaterialTheme.typography.bodySmall)
+        }
+        if (!passed) {
+            Text(penaltyText, style = MaterialTheme.typography.labelSmall, color = Color(0xFFF44336))
+        }
+    }
+}
+
+@Composable
 fun ChecklistDetailItem(label: String, checked: Boolean) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
@@ -260,6 +321,15 @@ fun getStatusColor(status: String): Color {
         "RUNNING" -> Color(0xFF2196F3)
         "CANCELLED" -> Color.LightGray
         else -> Color.Black
+    }
+}
+
+fun getGradeColor(grade: String): Color {
+    return when (grade) {
+        "A+", "A" -> Color(0xFF4CAF50)
+        "B" -> Color(0xFF8BC34A)
+        "C" -> Color(0xFFFF9800)
+        else -> Color(0xFFF44336)
     }
 }
 

@@ -24,9 +24,11 @@ import com.example.compoundingjournal.data.repository.TradeRepositoryImpl
 import com.example.compoundingjournal.presentation.components.AppTopBar
 import com.example.compoundingjournal.presentation.components.EmptyState
 import com.example.compoundingjournal.presentation.components.SectionCard
+import com.example.compoundingjournal.presentation.journal.getGradeColor
+import com.example.compoundingjournal.utils.CalculationUtils
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AnalyticsScreen() {
     val context = LocalContext.current
@@ -59,9 +61,27 @@ fun AnalyticsScreen() {
                         AnalyticsRow("Total Trades", s.totalTrades.toString())
                         AnalyticsRow("Wins / Losses", "${s.wins} / ${s.losses}")
                         AnalyticsRow("Win Rate", "${String.format("%.1f", s.winRate)}%", isBold = true)
+                        AnalyticsRow("Avg Quality Score", "${uiState.averageQualityScore.toInt()}/100", color = getGradeColor(CalculationUtils.calculateTradeQualityGrade(uiState.averageQualityScore)))
                         AnalyticsRow("Profit Factor", String.format("%.2f", s.profitFactor))
                         AnalyticsRow("Net Profit", String.format("%.2f", s.netProfit), color = if (s.netProfit >= 0) Color(0xFF4CAF50) else Color(0xFFF44336), isBold = true)
                         AnalyticsRow("Avg Profit / Loss", "${String.format("%.2f", s.averageProfit)} / ${String.format("%.2f", s.averageLoss)}")
+                    }
+                }
+
+                item {
+                    SectionCard("Trade Quality Analysis") {
+                        uiState.qualityAnalysis.forEach { stat ->
+                            ExpandableAnalyticItem(
+                                title = "Grade ${stat.grade}",
+                                subtitle = "Count: ${stat.count} • Win Rate: ${String.format("%.1f", stat.winRate)}%",
+                                mainValue = String.format("%.2f", stat.netProfit),
+                                colorOverride = getGradeColor(stat.grade),
+                                details = {
+                                    AnalyticsRow("Trades in Grade", stat.count.toString())
+                                    AnalyticsRow("Cumulative Impact", String.format("%.2f", stat.netProfit))
+                                }
+                            )
+                        }
                     }
                 }
 
@@ -192,6 +212,7 @@ fun ExpandableAnalyticItem(
     title: String,
     subtitle: String,
     mainValue: String,
+    colorOverride: Color? = null,
     details: @Composable ColumnScope.() -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -206,7 +227,7 @@ fun ExpandableAnalyticItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = colorOverride ?: MaterialTheme.colorScheme.onSurface)
                 Text(subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -214,7 +235,7 @@ fun ExpandableAnalyticItem(
                     text = mainValue, 
                     style = MaterialTheme.typography.bodyLarge, 
                     fontWeight = FontWeight.Bold,
-                    color = if (mainValue.startsWith("-")) Color(0xFFF44336) else if (mainValue == "0.00") Color.Gray else Color(0xFF4CAF50)
+                    color = colorOverride ?: if (mainValue.startsWith("-")) Color(0xFFF44336) else if (mainValue == "0.00") Color.Gray else Color(0xFF4CAF50)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Icon(

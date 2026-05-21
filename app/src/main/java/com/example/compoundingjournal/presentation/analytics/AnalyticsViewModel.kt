@@ -18,6 +18,8 @@ data class AnalyticsUiState(
     val monthlyAnalysis: List<MonthlyStat> = emptyList(),
     val commonMistakes: List<Pair<String, Int>> = emptyList(),
     val mistakeAnalysis: List<MistakeTagStat> = emptyList(),
+    val qualityAnalysis: List<QualityGradeStat> = emptyList(),
+    val averageQualityScore: Double = 0.0,
     val isLoading: Boolean = false
 )
 
@@ -84,6 +86,13 @@ data class MistakeTagStat(
     val winRate: Double
 )
 
+data class QualityGradeStat(
+    val grade: String,
+    val count: Int,
+    val winRate: Double,
+    val netProfit: Double
+)
+
 class AnalyticsViewModel(
     private val tradeRepository: TradeRepository
 ) : ViewModel() {
@@ -106,6 +115,7 @@ class AnalyticsViewModel(
         val strategyStats = calculateStrategyStats(trades)
         val monthlyStats = calculateMonthlyStats(trades)
         val mistakeTags = calculateMistakeTagStats(trades)
+        val qualityStats = calculateQualityStats(trades)
 
         return AnalyticsUiState(
             trades = trades,
@@ -116,6 +126,8 @@ class AnalyticsViewModel(
             strategyAnalysis = strategyStats,
             monthlyAnalysis = monthlyStats,
             mistakeAnalysis = mistakeTags,
+            qualityAnalysis = qualityStats,
+            averageQualityScore = if (trades.isNotEmpty()) trades.sumOf { it.tradeQualityScore } / trades.size else 0.0,
             isLoading = false
         )
     }
@@ -228,6 +240,17 @@ class AnalyticsViewModel(
                 winRate = CalculationUtils.calculateWinRate(tagTrades)
             )
         }.sortedByDescending { it.count }
+    }
+
+    private fun calculateQualityStats(trades: List<TradeEntity>): List<QualityGradeStat> {
+        return trades.groupBy { it.tradeQualityGrade }.map { (grade, gradeTrades) ->
+            QualityGradeStat(
+                grade = if (grade.isEmpty()) "N/A" else grade,
+                count = gradeTrades.size,
+                winRate = CalculationUtils.calculateWinRate(gradeTrades),
+                netProfit = gradeTrades.sumOf { it.netProfitLoss }
+            )
+        }.sortedBy { it.grade }
     }
 
     private fun <T> Iterable<T>.averageOf(selector: (T) -> Double): Double {

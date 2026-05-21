@@ -15,7 +15,7 @@ object ExportUtils {
             "Withdrawal Amount", "Starting Balance", "Ending Balance", "Growth %",
             "Risk Reward Ratio", "R Multiple", "Status", "Strategy Name",
             "Setup Type", "Emotion Before", "Emotion After", "Mistake Tags", "Mistake Made",
-            "Lesson Learned", "Notes"
+            "Lesson Learned", "Trade Quality Score", "Trade Quality Grade", "Notes"
         ).joinToString(",")
 
         val rows = trades.map { t ->
@@ -26,7 +26,7 @@ object ExportUtils {
                 t.withdrawalAmount, t.startingBalance, t.endingBalance, t.growthPercent,
                 t.riskRewardRatio, t.rMultiple, t.status, t.strategyName,
                 t.setupType, t.emotionBefore, t.emotionAfter, t.mistakeTags, t.mistakeMade,
-                t.lessonLearned, "\"${t.notes.replace("\"", "\"\"")}\""
+                t.lessonLearned, t.tradeQualityScore, t.tradeQualityGrade, "\"${t.notes.replace("\"", "\"\"")}\""
             ).joinToString(",")
         }
 
