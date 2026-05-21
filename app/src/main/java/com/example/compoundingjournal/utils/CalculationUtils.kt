@@ -90,11 +90,10 @@ object CalculationUtils {
         val sortedTrades = trades.sortedBy { it.timestamp }
         var peak = 0.0
         var currentEquity = 0.0
-        var maxDrawdown = 0.0
+        var maxDrawdownPercent = 0.0
 
         if (sortedTrades.isNotEmpty()) {
-            currentEquity = sortedTrades.first().startingBalance
-            peak = currentEquity
+            peak = sortedTrades.first().startingBalance
         }
 
         for (trade in sortedTrades) {
@@ -102,13 +101,13 @@ object CalculationUtils {
             if (currentEquity > peak) {
                 peak = currentEquity
             }
-            val drawdown = peak - currentEquity
-            if (drawdown > maxDrawdown) {
-                maxDrawdown = drawdown
+            val drawdown = if (peak > 0) ((peak - currentEquity) / peak) * 100 else 0.0
+            if (drawdown > maxDrawdownPercent) {
+                maxDrawdownPercent = drawdown
             }
         }
         
-        return maxDrawdown
+        return maxDrawdownPercent
     }
 
     fun calculateCurrentStreak(trades: List<TradeEntity>): Int {
@@ -337,14 +336,16 @@ object CalculationUtils {
         val points = mutableListOf<Pair<Long, Double>>()
 
         for (trade in sortedTrades) {
-            currentBalance = trade.endingBalance
-            if (currentBalance > peak) peak = currentBalance
+            currentEquity = trade.endingBalance
+            if (currentEquity > peak) peak = currentEquity
             
-            val drawdown = if (peak > 0) ((peak - currentBalance) / peak) * 100 else 0.0
+            val drawdown = if (peak > 0) ((peak - currentEquity) / peak) * 100 else 0.0
             points.add(trade.timestamp to drawdown)
         }
         return points
     }
+
+    private var currentEquity: Double = 0.0 // Helper variable used in loop above
 
     fun calculateCumulativeProfit(trades: List<TradeEntity>): List<Pair<Long, Double>> {
         val sortedTrades = trades.sortedBy { it.timestamp }

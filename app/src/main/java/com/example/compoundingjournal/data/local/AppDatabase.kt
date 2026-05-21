@@ -38,6 +38,8 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 // Update trades table
+                database.execSQL("ALTER TABLE trades ADD COLUMN createdAt INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE trades ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0")
                 database.execSQL("ALTER TABLE trades ADD COLUMN checklistTrendConfirmed INTEGER NOT NULL DEFAULT 0")
                 database.execSQL("ALTER TABLE trades ADD COLUMN checklistKeyLevelConfirmed INTEGER NOT NULL DEFAULT 0")
                 database.execSQL("ALTER TABLE trades ADD COLUMN checklistEntryReasonConfirmed INTEGER NOT NULL DEFAULT 0")

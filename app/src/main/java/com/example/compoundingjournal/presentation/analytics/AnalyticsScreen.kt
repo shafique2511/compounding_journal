@@ -29,7 +29,7 @@ import com.example.compoundingjournal.data.repository.TradeRepositoryImpl
 import com.example.compoundingjournal.presentation.components.AppTopBar
 import com.example.compoundingjournal.presentation.components.EmptyState
 import com.example.compoundingjournal.presentation.components.SectionCard
-import com.example.compoundingjournal.presentation.journal.getGradeColor
+import com.example.compoundingjournal.utils.ColorUtils
 import com.example.compoundingjournal.utils.CalculationUtils
 import java.util.Locale
 
@@ -94,7 +94,7 @@ fun AnalyticsScreen() {
                         AnalyticsRow("Total Trades", s.totalTrades.toString())
                         AnalyticsRow("Wins / Losses", "${s.wins} / ${s.losses}")
                         AnalyticsRow("Win Rate", "${String.format("%.1f", s.winRate)}%", isBold = true)
-                        AnalyticsRow("Avg Quality Score", "${uiState.averageQualityScore.toInt()}/100", color = getGradeColor(CalculationUtils.calculateTradeQualityGrade(uiState.averageQualityScore)))
+                        AnalyticsRow("Avg Quality Score", "${uiState.averageQualityScore.toInt()}/100", color = ColorUtils.getGradeColor(CalculationUtils.calculateTradeQualityGrade(uiState.averageQualityScore)))
                         AnalyticsRow("Profit Factor", String.format("%.2f", s.profitFactor))
                         AnalyticsRow("Net Profit", String.format("%.2f", s.netProfit), color = if (s.netProfit >= 0) Color(0xFF4CAF50) else Color(0xFFF44336), isBold = true)
                         AnalyticsRow("Avg Profit / Loss", "${String.format("%.2f", s.averageProfit)} / ${String.format("%.2f", s.averageLoss)}")
@@ -135,7 +135,7 @@ fun AnalyticsScreen() {
                                 title = "Grade ${stat.grade}",
                                 subtitle = "Count: ${stat.count} • Win Rate: ${String.format("%.1f", stat.winRate)}%",
                                 mainValue = String.format("%.2f", stat.netProfit),
-                                colorOverride = getGradeColor(stat.grade),
+                                colorOverride = ColorUtils.getGradeColor(stat.grade),
                                 details = {
                                     AnalyticsRow("Trades in Grade", stat.count.toString())
                                     AnalyticsRow("Cumulative Impact", String.format("%.2f", stat.netProfit))
@@ -151,7 +151,7 @@ fun AnalyticsScreen() {
                         AnalyticsRow("Avg Risk Per Trade", String.format("%.2f", r.averageRisk))
                         AnalyticsRow("Avg R Multiple", String.format("%.2f", r.averageR), isBold = true)
                         AnalyticsRow("Best / Worst R", "${String.format("%.2f", r.bestR)} / ${String.format("%.2f", r.worstR)}")
-                        AnalyticsRow("Maximum Drawdown", String.format("%.2f", r.maxDrawdown))
+                        AnalyticsRow("Maximum Drawdown", "${String.format("%.2f", r.maxDrawdown)}%", color = Color(0xFFFF9800))
                     }
                 }
 

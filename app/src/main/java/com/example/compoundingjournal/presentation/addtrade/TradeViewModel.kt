@@ -50,7 +50,7 @@ class TradeViewModel(
                 it.copy(
                     date = DateTimeUtils.getCurrentDeviceDate(),
                     time = DateTimeUtils.getCurrentDeviceTime(),
-                    startingBalance = startBalance.toString(),
+                    startingBalance = String.format("%.2f", startBalance),
                     symbol = settings?.defaultSymbol ?: "",
                     timeframe = settings?.defaultTimeframe ?: "H1",
                     commission = (settings?.defaultCommission ?: 0.0).toString(),
@@ -140,7 +140,10 @@ class TradeViewModel(
                 _uiState.update { it.copy(takeProfit = event.value) }
                 calculateValues()
             }
-            is TradeFormEvent.LotSizeChanged -> _uiState.update { it.copy(lotSize = event.value) }
+            is TradeFormEvent.LotSizeChanged -> {
+                _uiState.update { it.copy(lotSize = event.value) }
+                calculateValues()
+            }
             is TradeFormEvent.StartingBalanceChanged -> {
                 _uiState.update { it.copy(startingBalance = event.value) }
                 calculateValues()
@@ -268,7 +271,7 @@ class TradeViewModel(
         val warnings = mutableListOf<String>()
         val state = _uiState.value
         val trades = tradeRepository.getAllTrades().first()
-        val startBalance = state.startingBalance.toDoubleOrNull() ?: 1.0
+        val startBalance = state.startingBalance.toDoubleOrNull() ?: 0.0
         val entry = state.entryPrice.toDoubleOrNull() ?: 0.0
         val sl = state.stopLoss.toDoubleOrNull() ?: 0.0
         val lotSize = state.lotSize.toDoubleOrNull() ?: 0.0
@@ -334,7 +337,6 @@ class TradeViewModel(
         val lotSize = state.lotSize.toDoubleOrNull() ?: 0.0
         
         val riskAmount = abs(entry - sl) * lotSize
-        val rewardAmount = abs(tp - entry) * lotSize
         
         val rr = CalculationUtils.calculateRiskRewardRatio(state.direction, entry, sl, tp)
         val rMultiple = CalculationUtils.calculateRMultiple(net, if (riskAmount == 0.0) 1.0 else riskAmount)
@@ -395,7 +397,7 @@ class TradeViewModel(
                 tradeNumber = tradeNumber,
                 date = state.date,
                 time = state.time,
-                timestamp = DateTimeUtils.getCurrentTimestamp(),
+                timestamp = if (editingTradeId == null) DateTimeUtils.getCurrentTimestamp() else originalTrade?.timestamp ?: DateTimeUtils.getCurrentTimestamp(),
                 symbol = state.symbol,
                 direction = state.direction,
                 timeframe = state.timeframe,
@@ -408,13 +410,13 @@ class TradeViewModel(
                 grossProfitLoss = state.grossProfitLoss.toDoubleOrNull() ?: 0.0,
                 commission = state.commission.toDoubleOrNull() ?: 0.0,
                 swap = state.swap.toDoubleOrNull() ?: 0.0,
-                netProfitLoss = state.netProfitLoss.toDouble(),
+                netProfitLoss = state.netProfitLoss.toDoubleOrNull() ?: 0.0,
                 withdrawalAmount = state.withdrawalAmount.toDoubleOrNull() ?: 0.0,
                 startingBalance = state.startingBalance.toDoubleOrNull() ?: 0.0,
-                endingBalance = state.endingBalance.toDouble(),
-                growthPercent = state.growthPercent.toDouble(),
-                riskRewardRatio = state.riskRewardRatio.toDouble(),
-                rMultiple = state.rMultiple.toDouble(),
+                endingBalance = state.endingBalance.toDoubleOrNull() ?: 0.0,
+                growthPercent = state.growthPercent.toDoubleOrNull() ?: 0.0,
+                riskRewardRatio = state.riskRewardRatio.toDoubleOrNull() ?: 0.0,
+                rMultiple = state.rMultiple.toDoubleOrNull() ?: 0.0,
                 status = state.status,
                 strategyName = state.strategyName,
                 setupType = state.setupType,

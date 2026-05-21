@@ -28,8 +28,8 @@ object ExportUtils {
                 t.withdrawalAmount, t.startingBalance, t.endingBalance, t.growthPercent,
                 t.riskRewardRatio, t.rMultiple, t.status, t.strategyName,
                 t.setupType, t.emotionBefore, t.emotionAfter, t.checklistScore, t.checklistStatus,
-                "\"${t.mistakeTags}\"", t.mistakeMade, "\"${t.lessonLearned.replace("\"", "\"\"")}\"", 
-                t.ruleFollowed, "\"${t.ruleBrokenNotes.replace("\"", "\"\"")}\"",
+                "\"${t.mistakeTags.replace("\"", "\"\"")}\"", "\"${t.mistakeMade.replace("\"", "\"\"")}\"", 
+                "\"${t.lessonLearned.replace("\"", "\"\"")}\"", t.ruleFollowed, "\"${t.ruleBrokenNotes.replace("\"", "\"\"")}\"",
                 t.tradeQualityScore, t.tradeQualityGrade, t.reviewCompleted, t.reviewDate, "\"${t.reviewNotes.replace("\"", "\"\"")}\"",
                 "\"${t.notes.replace("\"", "\"\"")}\""
             ).joinToString(",")
