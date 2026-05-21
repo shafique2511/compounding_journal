@@ -2,6 +2,7 @@ package com.example.compoundingjournal.presentation.navigation
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
@@ -12,6 +13,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector?
     object Dashboard : Screen("dashboard", "Dashboard", Icons.Default.Dashboard)
     object Journal : Screen("journal", "Journal", Icons.Default.List)
     object Calendar : Screen("calendar", "Calendar", Icons.Default.Event)
+    object Review : Screen("review", "Review", Icons.Default.Assignment)
     object Analytics : Screen("analytics", "Analytics", Icons.Default.Analytics)
     object Settings : Screen("settings", "Settings", Icons.Default.Settings)
     

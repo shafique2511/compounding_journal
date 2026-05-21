@@ -131,6 +131,21 @@ fun ExportBackupScreen(onNavigateBack: () -> Unit) {
 
                 OutlinedButton(
                     onClick = {
+                        viewModel.prepareReviewReportExport { content ->
+                            csvContent = content
+                            csvLauncher.launch("review_report_${System.currentTimeMillis()}.csv")
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Text("Export Review Report (CSV)")
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedButton(
+                    onClick = {
                         viewModel.prepareStrategyExport { content ->
                             csvContent = content
                             csvLauncher.launch("strategy_playbook_${System.currentTimeMillis()}.csv")

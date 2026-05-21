@@ -20,6 +20,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.compoundingjournal.data.local.AppDatabase
+import com.example.compoundingjournal.data.repository.FilterPresetRepository
+import com.example.compoundingjournal.data.repository.FilterPresetRepositoryImpl
+import com.example.compoundingjournal.data.repository.SettingsRepository
 import com.example.compoundingjournal.data.repository.SettingsRepositoryImpl
 import com.example.compoundingjournal.data.repository.TradeRepository
 import com.example.compoundingjournal.data.repository.TradeRepositoryImpl
@@ -28,7 +31,6 @@ import com.example.compoundingjournal.presentation.components.EmptyState
 import com.example.compoundingjournal.presentation.components.SectionCard
 import com.example.compoundingjournal.presentation.journal.getGradeColor
 import com.example.compoundingjournal.utils.CalculationUtils
-import com.example.compoundingjournal.data.repository.SettingsRepository
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -38,7 +40,7 @@ fun AnalyticsScreen() {
     val database = remember { AppDatabase.getDatabase(context) }
     val repository = remember { TradeRepositoryImpl(database.tradeDao()) }
     val settingsRepository = remember { SettingsRepositoryImpl(database.settingsDao()) }
-    val presetRepository = remember { com.example.compoundingjournal.data.repository.FilterPresetRepositoryImpl(database.filterPresetDao()) }
+    val presetRepository = remember { FilterPresetRepositoryImpl(database.filterPresetDao()) }
     val viewModel: AnalyticsViewModel = viewModel(
         factory = AnalyticsViewModelFactory(repository, settingsRepository, presetRepository)
     )
@@ -115,6 +117,18 @@ fun AnalyticsScreen() {
                 }
 
                 item {
+                    SectionCard("Review Analysis") {
+                        val ra = uiState.reviewAnalysis
+                        AnalyticsRow("Reviewed Trades", ra.reviewedCount.toString())
+                        AnalyticsRow("Unreviewed Losses", ra.unreviewedLosingCount.toString(), if (ra.unreviewedLosingCount > 0) Color(0xFFF44336) else MaterialTheme.colorScheme.onSurface)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Top Recurring Patterns:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                        AnalyticsRow("Top Mistake", ra.mostRepeatedMistake)
+                        AnalyticsRow("Top Lesson", ra.mostRepeatedLesson)
+                    }
+                }
+
+                item {
                     SectionCard("Trade Quality Analysis") {
                         uiState.qualityAnalysis.forEach { stat ->
                             ExpandableAnalyticItem(
@@ -137,7 +151,7 @@ fun AnalyticsScreen() {
                         AnalyticsRow("Avg Risk Per Trade", String.format("%.2f", r.averageRisk))
                         AnalyticsRow("Avg R Multiple", String.format("%.2f", r.averageR), isBold = true)
                         AnalyticsRow("Best / Worst R", "${String.format("%.2f", r.bestR)} / ${String.format("%.2f", r.worstR)}")
-                        AnalyticsRow("Maximum Drawdown", String.format("%.2f", r.maxDrawdown), color = Color(0xFFFF9800))
+                        AnalyticsRow("Maximum Drawdown", String.format("%.2f", r.maxDrawdown))
                     }
                 }
 
@@ -307,7 +321,7 @@ fun ExpandableAnalyticItem(
 class AnalyticsViewModelFactory(
     private val repository: TradeRepository,
     private val settingsRepository: SettingsRepository,
-    private val presetRepository: com.example.compoundingjournal.data.repository.FilterPresetRepository
+    private val presetRepository: FilterPresetRepository
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(AnalyticsViewModel::class.java)) {

@@ -18,6 +18,7 @@ import com.example.compoundingjournal.presentation.strategy.AddStrategyScreen
 import com.example.compoundingjournal.presentation.strategy.StrategyPlaybookScreen
 import com.example.compoundingjournal.presentation.calendar.CalendarScreen
 import com.example.compoundingjournal.presentation.filter.FilterPresetScreen
+import com.example.compoundingjournal.presentation.review.ReviewScreen
 
 @Composable
 fun NavGraph(navController: NavHostController) {
@@ -37,6 +38,11 @@ fun NavGraph(navController: NavHostController) {
         }
         composable(Screen.Calendar.route) {
             CalendarScreen(
+                onTradeClick = { tradeId -> navController.navigate(Screen.TradeDetail.createRoute(tradeId)) }
+            )
+        }
+        composable(Screen.Review.route) {
+            ReviewScreen(
                 onTradeClick = { tradeId -> navController.navigate(Screen.TradeDetail.createRoute(tradeId)) }
             )
         }

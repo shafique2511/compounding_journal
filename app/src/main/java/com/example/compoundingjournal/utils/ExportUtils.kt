@@ -54,6 +54,18 @@ object ExportUtils {
         return (listOf(header) + rows).joinToString("\n")
     }
 
+    fun generateReviewReportCsv(trades: List<TradeEntity>): String {
+        val header = "Trade #,Symbol,Result,Grade,Mistakes,Lesson,Reviewed,Review Date,Review Notes"
+        val rows = trades.map { t ->
+            listOf(
+                t.tradeNumber, t.symbol, t.netProfitLoss, t.tradeQualityGrade,
+                "\"${t.mistakeTags}\"", "\"${t.lessonLearned}\"",
+                t.reviewCompleted, t.reviewDate, "\"${t.reviewNotes.replace("\"", "\"\"")}\""
+            ).joinToString(",")
+        }
+        return (listOf(header) + rows).joinToString("\n")
+    }
+
     fun generateStrategyCsv(strategies: List<StrategyEntity>): String {
         val header = "Name,Market,Timeframe,Active,Entry Rules,Exit Rules,SL Rules,TP Rules,Risk Rules,Notes"
         val rows = strategies.map { s ->

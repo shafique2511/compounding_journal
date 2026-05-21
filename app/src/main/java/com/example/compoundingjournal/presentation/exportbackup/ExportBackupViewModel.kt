@@ -62,6 +62,14 @@ class ExportBackupViewModel(
         }
     }
 
+    fun prepareReviewReportExport(onReady: (String) -> Unit) {
+        viewModelScope.launch {
+            val trades = tradeRepository.getAllTrades().first()
+            val csv = ExportUtils.generateReviewReportCsv(trades)
+            onReady(csv)
+        }
+    }
+
     fun showMessage(msg: String) {
         _uiState.update { it.copy(message = msg) }
     }

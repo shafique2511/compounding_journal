@@ -29,6 +29,7 @@ class MainActivity : ComponentActivity() {
                     Screen.Dashboard,
                     Screen.Journal,
                     Screen.Calendar,
+                    Screen.Review,
                     Screen.Analytics,
                     Screen.Settings
                 )

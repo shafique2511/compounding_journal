@@ -23,7 +23,15 @@ data class AnalyticsUiState(
     val qualityAnalysis: List<QualityGradeStat> = emptyList(),
     val averageQualityScore: Double = 0.0,
     val riskRuleAnalysis: RiskRuleAnalysis = RiskRuleAnalysis(),
+    val reviewAnalysis: ReviewAnalysis = ReviewAnalysis(),
     val isLoading: Boolean = false
+)
+
+data class ReviewAnalysis(
+    val reviewedCount: Int = 0,
+    val unreviewedLosingCount: Int = 0,
+    val mostRepeatedLesson: String = "",
+    val mostRepeatedMistake: String = ""
 )
 
 data class PerformanceSummary(
@@ -178,6 +186,7 @@ class AnalyticsViewModel(
         val mistakeTags = calculateMistakeTagStats(trades)
         val qualityStats = calculateQualityStats(trades)
         val riskRuleAnalysis = calculateRiskRuleAnalysis(trades, settings)
+        val reviewAnalysis = calculateReviewAnalysis(trades)
 
         return AnalyticsUiState(
             trades = trades,
@@ -191,7 +200,29 @@ class AnalyticsViewModel(
             qualityAnalysis = qualityStats,
             averageQualityScore = if (trades.isNotEmpty()) trades.sumOf { it.tradeQualityScore } / trades.size else 0.0,
             riskRuleAnalysis = riskRuleAnalysis,
+            reviewAnalysis = reviewAnalysis,
             isLoading = false
+        )
+    }
+
+    private fun calculateReviewAnalysis(trades: List<TradeEntity>): ReviewAnalysis {
+        val reviewed = trades.count { it.reviewCompleted }
+        val unreviewedLosing = trades.count { it.netProfitLoss < 0 && !it.reviewCompleted }
+        
+        // Simple most repeated logic
+        val lessonCounts = trades.map { it.lessonLearned }.filter { it.isNotBlank() }
+            .groupingBy { it }.eachCount()
+        val topLesson = lessonCounts.maxByOrNull { it.value }?.key ?: "None"
+        
+        val mistakeCounts = trades.flatMap { it.mistakeTags.split(",") }.filter { it.isNotBlank() }
+            .groupingBy { it.trim() }.eachCount()
+        val topMistake = mistakeCounts.maxByOrNull { it.value }?.key ?: "None"
+
+        return ReviewAnalysis(
+            reviewedCount = reviewed,
+            unreviewedLosingCount = unreviewedLosing,
+            mostRepeatedLesson = topLesson,
+            mostRepeatedMistake = topMistake
         )
     }
 
