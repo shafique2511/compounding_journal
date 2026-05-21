@@ -23,7 +23,10 @@ import com.example.compoundingjournal.presentation.components.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onNavigateToExportBackup: () -> Unit) {
+fun SettingsScreen(
+    onNavigateToExportBackup: () -> Unit,
+    onNavigateToStrategyPlaybook: () -> Unit
+) {
     val context = LocalContext.current
     val database = remember { AppDatabase.getDatabase(context) }
     val settingsRepository = remember { SettingsRepositoryImpl(database.settingsDao()) }
@@ -229,6 +232,14 @@ fun SettingsScreen(onNavigateToExportBackup: () -> Unit) {
                 }
 
                 SectionCard("Data Tools") {
+                    Button(
+                        onClick = onNavigateToStrategyPlaybook,
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Text("Open Strategy Playbook")
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
                     Button(
                         onClick = onNavigateToExportBackup, 
                         modifier = Modifier.fillMaxWidth().height(48.dp),

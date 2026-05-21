@@ -3,6 +3,7 @@ package com.example.compoundingjournal.presentation.exportbackup
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.compoundingjournal.data.entity.TradeEntity
+import com.example.compoundingjournal.data.repository.StrategyRepository
 import com.example.compoundingjournal.data.repository.TradeRepository
 import com.example.compoundingjournal.utils.ExportUtils
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,7 +20,8 @@ data class ExportBackupUiState(
 )
 
 class ExportBackupViewModel(
-    private val tradeRepository: TradeRepository
+    private val tradeRepository: TradeRepository,
+    private val strategyRepository: StrategyRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ExportBackupUiState())
@@ -48,6 +50,14 @@ class ExportBackupViewModel(
             )
             
             val csv = ExportUtils.generateSummaryCsv(summaryMap)
+            onReady(csv)
+        }
+    }
+
+    fun prepareStrategyExport(onReady: (String) -> Unit) {
+        viewModelScope.launch {
+            val strategies = strategyRepository.getAllStrategies().first()
+            val csv = ExportUtils.generateStrategyCsv(strategies)
             onReady(csv)
         }
     }

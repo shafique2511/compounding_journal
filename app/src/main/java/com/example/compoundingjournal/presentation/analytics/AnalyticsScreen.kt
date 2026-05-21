@@ -163,6 +163,9 @@ fun AnalyticsScreen() {
                                 mainValue = String.format("%.2f", stat.netProfit),
                                 details = {
                                     AnalyticsRow("Average R-Multiple", String.format("%.2f", stat.averageR))
+                                    AnalyticsRow("Profit Factor", String.format("%.2f", stat.profitFactor))
+                                    AnalyticsRow("Max Drawdown", String.format("%.2f", stat.maxDrawdown))
+                                    AnalyticsRow("Best / Worst Trade", "${String.format("%.2f", stat.bestTrade)} / ${String.format("%.2f", stat.worstTrade)}")
                                 }
                             )
                         }

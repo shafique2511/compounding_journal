@@ -14,6 +14,8 @@ import com.example.compoundingjournal.presentation.exportbackup.ExportBackupScre
 import com.example.compoundingjournal.presentation.journal.JournalScreen
 import com.example.compoundingjournal.presentation.journal.TradeDetailScreen
 import com.example.compoundingjournal.presentation.settings.SettingsScreen
+import com.example.compoundingjournal.presentation.strategy.AddStrategyScreen
+import com.example.compoundingjournal.presentation.strategy.StrategyPlaybookScreen
 
 @Composable
 fun NavGraph(navController: NavHostController) {
@@ -36,7 +38,8 @@ fun NavGraph(navController: NavHostController) {
         }
         composable(Screen.Settings.route) {
             SettingsScreen(
-                onNavigateToExportBackup = { navController.navigate(Screen.ExportBackup.route) }
+                onNavigateToExportBackup = { navController.navigate(Screen.ExportBackup.route) },
+                onNavigateToStrategyPlaybook = { navController.navigate(Screen.StrategyPlaybook.route) }
             )
         }
         composable(Screen.AddTrade.route) {
@@ -62,6 +65,23 @@ fun NavGraph(navController: NavHostController) {
         }
         composable(Screen.ExportBackup.route) {
             ExportBackupScreen(onNavigateBack = { navController.popBackStack() })
+        }
+        composable(Screen.StrategyPlaybook.route) {
+            StrategyPlaybookScreen(
+                onAddStrategy = { navController.navigate(Screen.AddStrategy.route) },
+                onEditStrategy = { id -> navController.navigate(Screen.EditStrategy.createRoute(id)) },
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable(Screen.AddStrategy.route) {
+            AddStrategyScreen(onNavigateBack = { navController.popBackStack() })
+        }
+        composable(
+            route = Screen.EditStrategy.route,
+            arguments = listOf(navArgument("strategyId") { type = NavType.LongType })
+        ) { backStackEntry ->
+            val strategyId = backStackEntry.arguments?.getLong("strategyId") ?: 0L
+            AddStrategyScreen(strategyId = strategyId, onNavigateBack = { navController.popBackStack() })
         }
     }
 }

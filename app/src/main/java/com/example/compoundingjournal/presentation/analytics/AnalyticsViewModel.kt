@@ -68,7 +68,11 @@ data class StrategyStat(
     val totalTrades: Int,
     val winRate: Double,
     val netProfit: Double,
-    val averageR: Double
+    val averageR: Double,
+    val profitFactor: Double,
+    val maxDrawdown: Double,
+    val bestTrade: Double,
+    val worstTrade: Double
 )
 
 data class MonthlyStat(
@@ -201,7 +205,11 @@ class AnalyticsViewModel(
                 totalTrades = stratTrades.size,
                 winRate = CalculationUtils.calculateWinRate(stratTrades),
                 netProfit = stratTrades.sumOf { it.netProfitLoss },
-                averageR = CalculationUtils.calculateAverageRMultiple(stratTrades)
+                averageR = CalculationUtils.calculateAverageRMultiple(stratTrades),
+                profitFactor = CalculationUtils.calculateProfitFactor(stratTrades),
+                maxDrawdown = CalculationUtils.calculateMaxDrawdown(stratTrades),
+                bestTrade = CalculationUtils.calculateBestTrade(stratTrades),
+                worstTrade = CalculationUtils.calculateWorstTrade(stratTrades)
             )
         }.sortedByDescending { it.netProfit }
     }

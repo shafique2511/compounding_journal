@@ -2,8 +2,10 @@ package com.example.compoundingjournal.presentation.addtrade
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.compoundingjournal.data.entity.StrategyEntity
 import com.example.compoundingjournal.data.entity.TradeEntity
 import com.example.compoundingjournal.data.repository.SettingsRepository
+import com.example.compoundingjournal.data.repository.StrategyRepository
 import com.example.compoundingjournal.data.repository.TradeRepository
 import com.example.compoundingjournal.utils.CalculationUtils
 import com.example.compoundingjournal.utils.DateTimeUtils
@@ -17,13 +19,25 @@ import kotlin.math.abs
 
 class TradeViewModel(
     private val tradeRepository: TradeRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val strategyRepository: StrategyRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TradeFormState())
     val uiState: StateFlow<TradeFormState> = _uiState.asStateFlow()
 
+    private val _strategies = MutableStateFlow<List<StrategyEntity>>(emptyList())
+    val strategies = _strategies.asStateFlow()
+
     private var editingTradeId: Long? = null
+
+    init {
+        viewModelScope.launch {
+            strategyRepository.getActiveStrategies().collect {
+                _strategies.value = it
+            }
+        }
+    }
 
     fun initForAdd() {
         viewModelScope.launch {
@@ -206,7 +220,6 @@ class TradeViewModel(
             }
             is TradeFormEvent.RuleBrokenNotesChanged -> _uiState.update { it.copy(ruleBrokenNotes = event.value) }
             
-            // Phase 4
             is TradeFormEvent.MistakeTagsChanged -> {
                 _uiState.update { it.copy(mistakeTags = event.value) }
                 calculateValues()
@@ -415,7 +428,6 @@ sealed class TradeFormEvent {
     data class RuleFollowedChanged(val value: String) : TradeFormEvent()
     data class RuleBrokenNotesChanged(val value: String) : TradeFormEvent()
     
-    // Phase 4
     data class MistakeTagsChanged(val value: String) : TradeFormEvent()
     
     data class SaveTrade(val onSuccess: () -> Unit) : TradeFormEvent()

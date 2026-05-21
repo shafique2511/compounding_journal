@@ -2,19 +2,7 @@ package com.example.compoundingjournal.presentation.addtrade
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -33,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.compoundingjournal.data.local.AppDatabase
 import com.example.compoundingjournal.data.repository.SettingsRepositoryImpl
+import com.example.compoundingjournal.data.repository.StrategyRepositoryImpl
 import com.example.compoundingjournal.data.repository.TradeRepositoryImpl
 import com.example.compoundingjournal.presentation.components.*
 import com.example.compoundingjournal.presentation.journal.ScreenshotPreview
@@ -48,12 +37,14 @@ fun AddTradeScreen(
     val database = remember { AppDatabase.getDatabase(context) }
     val tradeRepository = remember { TradeRepositoryImpl(database.tradeDao()) }
     val settingsRepository = remember { SettingsRepositoryImpl(database.settingsDao()) }
+    val strategyRepository = remember { StrategyRepositoryImpl(database.strategyDao()) }
     
     val viewModel: TradeViewModel = viewModel(
-        factory = TradeViewModelFactory(tradeRepository, settingsRepository)
+        factory = TradeViewModelFactory(tradeRepository, settingsRepository, strategyRepository)
     )
 
     val uiState by viewModel.uiState.collectAsState()
+    val strategies by viewModel.strategies.collectAsState()
     val scrollState = rememberScrollState()
 
     LaunchedEffect(tradeId) {
@@ -91,7 +82,6 @@ fun AddTradeScreen(
         ) {
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Section 1: Trade Info
             SectionCard("Trade Information") {
                 OutlinedTextField(
                     value = uiState.symbol,
@@ -149,7 +139,6 @@ fun AddTradeScreen(
                 )
             }
 
-            // Phase 3: Pre-Trade Checklist
             SectionCard("Pre-Trade Checklist") {
                 ChecklistItem("Trend confirmed", uiState.checklistTrendConfirmed) { viewModel.onEvent(TradeFormEvent.ChecklistTrendChanged(it)) }
                 ChecklistItem("Key level confirmed", uiState.checklistKeyLevelConfirmed) { viewModel.onEvent(TradeFormEvent.ChecklistKeyLevelChanged(it)) }
@@ -171,7 +160,6 @@ fun AddTradeScreen(
                 }
             }
 
-            // Section 2: Price Info
             SectionCard("Execution Details") {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     MoneyInputField(
@@ -204,7 +192,6 @@ fun AddTradeScreen(
                 }
             }
 
-            // Section 3: Money Info
             SectionCard("Financial Metrics") {
                 MoneyInputField(
                     value = uiState.startingBalance,
@@ -258,7 +245,6 @@ fun AddTradeScreen(
                 }
             }
 
-            // Phase 3: Rule tracking
             SectionCard("Rule Tracking") {
                 AppDropdownField(
                     label = "Rule Followed",
@@ -276,7 +262,6 @@ fun AddTradeScreen(
                 )
             }
 
-            // Phase 4: Mistake Tags
             SectionCard("Mistake Analysis") {
                 val tags = listOf(
                     "FOMO", "Revenge Trade", "Overlot", "Early Entry", "Late Entry",
@@ -308,12 +293,22 @@ fun AddTradeScreen(
                 }
             }
 
-            // Section 4: Psychology
             SectionCard("Trade Psychology & Notes") {
+                AppDropdownField(
+                    label = "Strategy",
+                    options = strategies.map { it.strategyName } + listOf("Custom..."),
+                    selectedOption = uiState.strategyName,
+                    onOptionSelected = {
+                        if (it != "Custom...") {
+                            viewModel.onEvent(TradeFormEvent.StrategyNameChanged(it))
+                        }
+                    }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = uiState.strategyName,
                     onValueChange = { viewModel.onEvent(TradeFormEvent.StrategyNameChanged(it)) },
-                    label = { Text("Strategy Name") },
+                    label = { Text("Strategy Name (Manual Edit)") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.medium
                 )
@@ -369,7 +364,6 @@ fun AddTradeScreen(
                 )
             }
 
-            // Section 5: Screenshots
             SectionCard("Screenshots") {
                 var tempUri by remember { mutableStateOf<android.net.Uri?>(null) }
                 var pickingForBefore by remember { mutableStateOf(true) }
@@ -433,7 +427,7 @@ fun AddTradeScreen(
 
             Button(
                 onClick = { 
-                    viewModel.onEvent(TradeFormEvent.SaveTrade(onNavigateBack))
+                    viewModel.onEvent(TradeFormEvent.SaveTrade { onNavigateBack() })
                 },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = MaterialTheme.shapes.medium,
@@ -442,7 +436,7 @@ fun AddTradeScreen(
                 if (uiState.isSaving) {
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(24.dp))
                 } else {
-                    var btnText = if (tradeId == null) "Save Trade Record" else "Update Trade Record"
+                    val btnText = if (tradeId == null) "Save Trade Record" else "Update Trade Record"
                     Text(btnText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 }
             }
@@ -475,7 +469,7 @@ fun AddTradeScreen(
             text = { Text("Checklist score is below 80%. This trade plan may be weak. Save anyway?") },
             confirmButton = {
                 TextButton(onClick = { 
-                    viewModel.onEvent(TradeFormEvent.ConfirmSaveWeakPlan(onNavigateBack))
+                    viewModel.onEvent(TradeFormEvent.ConfirmSaveWeakPlan { onNavigateBack() })
                 }) {
                     Text("Save Anyway")
                 }

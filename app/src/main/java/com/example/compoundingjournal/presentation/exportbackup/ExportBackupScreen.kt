@@ -27,9 +27,10 @@ import com.example.compoundingjournal.utils.ExportUtils
 fun ExportBackupScreen(onNavigateBack: () -> Unit) {
     val context = LocalContext.current
     val database = remember { AppDatabase.getDatabase(context) }
-    val repository = remember { TradeRepositoryImpl(database.tradeDao()) }
+    val tradeRepository = remember { TradeRepositoryImpl(database.tradeDao()) }
+    val strategyRepository = remember { com.example.compoundingjournal.data.repository.StrategyRepositoryImpl(database.strategyDao()) }
     val viewModel: ExportBackupViewModel = viewModel(
-        factory = ExportBackupViewModelFactory(repository)
+        factory = ExportBackupViewModelFactory(tradeRepository, strategyRepository)
     )
 
     val uiState by viewModel.uiState.collectAsState()
@@ -124,6 +125,21 @@ fun ExportBackupScreen(onNavigateBack: () -> Unit) {
                     shape = MaterialTheme.shapes.medium
                 ) {
                     Text("Export Performance Summary")
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedButton(
+                    onClick = {
+                        viewModel.prepareStrategyExport { content ->
+                            csvContent = content
+                            csvLauncher.launch("strategy_playbook_${System.currentTimeMillis()}.csv")
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Text("Export Strategy Playbook")
                 }
             }
 

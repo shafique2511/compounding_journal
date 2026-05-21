@@ -2,6 +2,7 @@ package com.example.compoundingjournal.utils
 
 import android.content.Context
 import android.net.Uri
+import com.example.compoundingjournal.data.entity.StrategyEntity
 import com.example.compoundingjournal.data.entity.TradeEntity
 import java.io.OutputStreamWriter
 
@@ -50,6 +51,22 @@ object ExportUtils {
     fun generateSummaryCsv(kpis: Map<String, String>): String {
         val header = "Metric,Value"
         val rows = kpis.map { (k, v) -> "$k,$v" }
+        return (listOf(header) + rows).joinToString("\n")
+    }
+
+    fun generateStrategyCsv(strategies: List<StrategyEntity>): String {
+        val header = "Name,Market,Timeframe,Active,Entry Rules,Exit Rules,SL Rules,TP Rules,Risk Rules,Notes"
+        val rows = strategies.map { s ->
+            listOf(
+                s.strategyName, s.marketType, s.timeframe, s.isActive,
+                "\"${s.entryRules.replace("\"", "\"\"")}\"",
+                "\"${s.exitRules.replace("\"", "\"\"")}\"",
+                "\"${s.stopLossRules.replace("\"", "\"\"")}\"",
+                "\"${s.takeProfitRules.replace("\"", "\"\"")}\"",
+                "\"${s.riskRules.replace("\"", "\"\"")}\"",
+                "\"${s.notes.replace("\"", "\"\"")}\""
+            ).joinToString(",")
+        }
         return (listOf(header) + rows).joinToString("\n")
     }
 }

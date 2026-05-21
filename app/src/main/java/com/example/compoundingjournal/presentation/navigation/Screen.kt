@@ -21,4 +21,10 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector?
         fun createRoute(tradeId: Long) = "trade_detail/$tradeId"
     }
     object ExportBackup : Screen("export_backup", "Export & Backup")
+
+    object StrategyPlaybook : Screen("strategy_playbook", "Strategy Playbook")
+    object AddStrategy : Screen("add_strategy", "Add Strategy")
+    object EditStrategy : Screen("edit_strategy/{strategyId}", "Edit Strategy") {
+        fun createRoute(strategyId: Long) = "edit_strategy/$strategyId"
+    }
 }
