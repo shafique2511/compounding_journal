@@ -16,6 +16,7 @@ import com.example.compoundingjournal.presentation.journal.TradeDetailScreen
 import com.example.compoundingjournal.presentation.settings.SettingsScreen
 import com.example.compoundingjournal.presentation.strategy.AddStrategyScreen
 import com.example.compoundingjournal.presentation.strategy.StrategyPlaybookScreen
+import com.example.compoundingjournal.presentation.calendar.CalendarScreen
 
 @Composable
 fun NavGraph(navController: NavHostController) {
@@ -31,6 +32,11 @@ fun NavGraph(navController: NavHostController) {
                 onAddTrade = { navController.navigate(Screen.AddTrade.route) },
                 onTradeClick = { tradeId -> navController.navigate(Screen.TradeDetail.createRoute(tradeId)) },
                 onEditTrade = { tradeId -> navController.navigate(Screen.EditTrade.createRoute(tradeId)) }
+            )
+        }
+        composable(Screen.Calendar.route) {
+            CalendarScreen(
+                onTradeClick = { tradeId -> navController.navigate(Screen.TradeDetail.createRoute(tradeId)) }
             )
         }
         composable(Screen.Analytics.route) {

@@ -28,6 +28,7 @@ class MainActivity : ComponentActivity() {
                 val items = listOf(
                     Screen.Dashboard,
                     Screen.Journal,
+                    Screen.Calendar,
                     Screen.Analytics,
                     Screen.Settings
                 )

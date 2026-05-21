@@ -5,11 +5,13 @@ import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Event
 import androidx.compose.ui.graphics.vector.ImageVector
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector? = null) {
     object Dashboard : Screen("dashboard", "Dashboard", Icons.Default.Dashboard)
     object Journal : Screen("journal", "Journal", Icons.Default.List)
+    object Calendar : Screen("calendar", "Calendar", Icons.Default.Event)
     object Analytics : Screen("analytics", "Analytics", Icons.Default.Analytics)
     object Settings : Screen("settings", "Settings", Icons.Default.Settings)
     
