@@ -60,6 +60,7 @@ abstract class AppDatabase : RoomDatabase() {
                 database.execSQL("ALTER TABLE trades ADD COLUMN reviewNotes TEXT NOT NULL DEFAULT ''")
 
                 // Update settings table
+                database.execSQL("ALTER TABLE settings ADD COLUMN autoTradeNumber INTEGER NOT NULL DEFAULT 1")
                 database.execSQL("ALTER TABLE settings ADD COLUMN maxRiskPerTradePercent REAL NOT NULL DEFAULT 2.0")
                 database.execSQL("ALTER TABLE settings ADD COLUMN maxDailyLossPercent REAL NOT NULL DEFAULT 5.0")
                 database.execSQL("ALTER TABLE settings ADD COLUMN maxWeeklyLossPercent REAL NOT NULL DEFAULT 10.0")

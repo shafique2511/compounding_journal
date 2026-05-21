@@ -387,11 +387,12 @@ class TradeViewModel(
             _uiState.update { it.copy(isSaving = true) }
             
             val lastTrade = tradeRepository.getLastTrade()
-            val tradeNumber = if (editingTradeId == null) (lastTrade?.tradeNumber ?: 0) + 1 else 0 
+            val originalTrade = if (editingTradeId != null) tradeRepository.getTradeById(editingTradeId!!) else null
+            val tradeNumber = if (editingTradeId == null) (lastTrade?.tradeNumber ?: 0) + 1 else originalTrade?.tradeNumber ?: 1
 
             val trade = TradeEntity(
                 id = editingTradeId ?: 0,
-                tradeNumber = if (editingTradeId == null) tradeNumber else tradeRepository.getTradeById(editingTradeId!!)?.tradeNumber ?: 1,
+                tradeNumber = tradeNumber,
                 date = state.date,
                 time = state.time,
                 timestamp = DateTimeUtils.getCurrentTimestamp(),
@@ -424,7 +425,7 @@ class TradeViewModel(
                 notes = state.notes,
                 beforeScreenshotPath = state.beforeScreenshotPath,
                 afterScreenshotPath = state.afterScreenshotPath,
-                createdAt = if (editingTradeId == null) DateTimeUtils.getCurrentTimestamp() else 0,
+                createdAt = originalTrade?.createdAt ?: DateTimeUtils.getCurrentTimestamp(),
                 updatedAt = DateTimeUtils.getCurrentTimestamp(),
                 
                 checklistTrendConfirmed = state.checklistTrendConfirmed,

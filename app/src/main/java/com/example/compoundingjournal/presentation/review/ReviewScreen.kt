@@ -51,7 +51,7 @@ fun ReviewScreen(onTradeClick: (Long) -> Unit) {
             if (uiState.trades.isEmpty()) {
                 EmptyState(
                     message = "No trades found for this review criteria.",
-                    icon = Icons.Default.FactCheck
+                    icon = Icons.Default.MenuBook
                 )
             } else {
                 LazyColumn(
@@ -192,7 +192,7 @@ fun ReviewTradeCard(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.medium
             ) {
-                Icon(if (trade.reviewCompleted) Icons.Default.EditNote else Icons.Default.RateReview, null, modifier = Modifier.size(18.dp))
+                Icon(if (trade.reviewCompleted) Icons.Default.Edit else Icons.Default.Assignment, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(if (trade.reviewCompleted) "Edit Review Analysis" else "Perform Post-Trade Review")
             }
